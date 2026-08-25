@@ -1,0 +1,8 @@
+[dependency-groups]
+checks = [
+    "flake8==7.3.0",
+    "mypy==2.3.0",
+]
+
+[tool.mypy]
+strict = true

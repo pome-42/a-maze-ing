@@ -1,0 +1,49 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended"
+  ],
+  "packageRules": [
+    {
+      "groupName": "Python check tools",
+      "matchPackageNames": [
+        "flake8",
+        "mypy"
+      ],
+      "rangeStrategy": "pin",
+      "automerge": false
+    },
+    {
+      "matchManagers": [
+        "github-actions"
+      ],
+      "enabled": false
+    },
+    {
+      "matchManagers": [
+        "github-actions"
+      ],
+      "matchDepTypes": [
+        "action"
+      ],
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "enabled": true,
+      "automerge": false
+    },
+    {
+      "matchManagers": [
+        "pyenv",
+        "runtime-version"
+      ],
+      "enabled": false
+    },
+    {
+      "matchPackageNames": [
+        "pip"
+      ],
+      "enabled": false
+    }
+  ]
+}

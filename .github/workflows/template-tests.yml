@@ -1,0 +1,36 @@
+name: Template tests
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - prepare_submission.sh
+      - .github/tests/**
+      - .github/workflows/template-tests.yml
+  pull_request:
+    paths:
+      - prepare_submission.sh
+      - .github/tests/**
+      - .github/workflows/template-tests.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: template-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  prepare-submission:
+    if: github.repository == 'pome-42/python_template'
+    runs-on: ubuntu-slim
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Run prepare_submission.sh tests
+        run: bash .github/tests/prepare_submission_test.sh
