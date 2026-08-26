@@ -12,10 +12,6 @@ version = "0.1.0"
 source = { virtual = "." }
 
 [package.dev-dependencies]
-checks = [
-    { name = "flake8" },
-    { name = "mypy" },
-]
 dev = [
     { name = "flake8" },
     { name = "mypy" },
@@ -24,10 +20,6 @@ dev = [
 [package.metadata]
 
 [package.metadata.requires-dev]
-checks = [
-    { name = "flake8", specifier = "==7.3.0" },
-    { name = "mypy", specifier = "==2.3.0" },
-]
 dev = [
     { name = "flake8", specifier = ">=7.3.0" },
     { name = "mypy", specifier = ">=2.3.0" },
