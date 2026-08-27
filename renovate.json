@@ -34,14 +34,7 @@
     },
     {
       "matchManagers": [
-        "pyenv",
-        "runtime-version"
-      ],
-      "enabled": false
-    },
-    {
-      "matchPackageNames": [
-        "pip"
+        "pyenv"
       ],
       "enabled": false
     }
