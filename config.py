@@ -3,6 +3,10 @@
 from dataclasses import dataclass
 
 
+class ConfigError(ValueError):
+    """Raised when a maze configuration is invalid."""
+
+
 @dataclass(frozen=True)
 class Config:
     """Store validated maze-generation settings."""
