@@ -3,6 +3,19 @@
 from dataclasses import dataclass
 
 
+REQUIRED_KEYS: frozenset[str] = frozenset(
+    {
+        "WIDTH",
+        "HEIGHT",
+        "ENTRY",
+        "EXIT",
+        "OUTPUT_FILE",
+        "PERFECT",
+    }
+)
+SUPPORTED_KEYS: frozenset[str] = REQUIRED_KEYS | {"SEED"}
+
+
 class ConfigError(ValueError):
     """Raised when a maze configuration is invalid."""
 
