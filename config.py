@@ -31,3 +31,16 @@ class Config:
     output_file: str
     perfect: bool
     seed: int | None = None
+
+
+def _parse_coordinate(key: str, value: str) -> tuple[int, int]:
+    """Parse a configuration coordinate value."""
+
+    parts: list[str] = value.split(",")
+    if len(parts) != 2:
+        raise ConfigError(f"{key} must contain exactly two coordinates")
+
+    try:
+        return int(parts[0].strip()), int(parts[1].strip())
+    except ValueError as error:
+        raise ConfigError(f"{key} must contain two integers") from error
