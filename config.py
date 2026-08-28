@@ -46,6 +46,15 @@ def _parse_coordinate(key: str, value: str) -> tuple[int, int]:
         raise ConfigError(f"{key} must contain two integers") from error
 
 
+def _parse_integer(key: str, value: str) -> int:
+    """Parse an integer configuration value."""
+
+    try:
+        return int(value)
+    except ValueError as error:
+        raise ConfigError(f"{key} must be an integer") from error
+
+
 def load_config(path: str) -> Config:
     """Load, convert, and validate maze settings from a UTF-8 file."""
 
@@ -86,11 +95,8 @@ def load_config(path: str) -> Config:
         missing = ", ".join(sorted(missing_keys))
         raise ConfigError(f"missing required configuration keys: {missing}")
 
-    try:
-        width = int(values["WIDTH"])
-        height = int(values["HEIGHT"])
-    except ValueError as error:
-        raise ConfigError("WIDTH and HEIGHT must be integers") from error
+    width = _parse_integer("WIDTH", values["WIDTH"])
+    height = _parse_integer("HEIGHT", values["HEIGHT"])
 
     if width <= 0:
         raise ConfigError("WIDTH must be greater than 0")
@@ -112,10 +118,7 @@ def load_config(path: str) -> Config:
 
     seed: int | None = None
     if "SEED" in values:
-        try:
-            seed = int(values["SEED"])
-        except ValueError as error:
-            raise ConfigError("SEED must be an integer") from error
+        seed = _parse_integer("SEED", values["SEED"])
 
     return Config(
         width=width,
