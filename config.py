@@ -36,7 +36,7 @@ class Config:
 def _parse_coordinate(key: str, value: str) -> tuple[int, int]:
     """Parse a configuration coordinate value."""
 
-    parts  = value.split(",")
+    parts = value.split(",")
     if len(parts) != 2:
         raise ConfigError(f"{key} must contain exactly two coordinates")
 
@@ -103,8 +103,8 @@ def load_config(path: str) -> Config:
     if height <= 0:
         raise ConfigError("HEIGHT must be greater than 0")
 
-    entry  = _parse_coordinate("ENTRY", values["ENTRY"])
-    exit_position  = _parse_coordinate("EXIT", values["EXIT"])
+    entry = _parse_coordinate("ENTRY", values["ENTRY"])
+    exit_position = _parse_coordinate("EXIT", values["EXIT"])
     for key, position in (("ENTRY", entry), ("EXIT", exit_position)):
         x, y = position
         if not (0 <= x < width and 0 <= y < height):
