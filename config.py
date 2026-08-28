@@ -36,7 +36,7 @@ class Config:
 def _parse_coordinate(key: str, value: str) -> tuple[int, int]:
     """Parse a configuration coordinate value."""
 
-    parts: list[str] = value.split(",")
+    parts  = value.split(",")
     if len(parts) != 2:
         raise ConfigError(f"{key} must contain exactly two coordinates")
 
@@ -44,3 +44,82 @@ def _parse_coordinate(key: str, value: str) -> tuple[int, int]:
         return int(parts[0].strip()), int(parts[1].strip())
     except ValueError as error:
         raise ConfigError(f"{key} must contain two integers") from error
+
+
+def load_config(path: str) -> Config:
+    """Load, convert, and validate maze settings from a UTF-8 file."""
+
+    values: dict[str, str] = {}
+    try:
+        with open(path, encoding="utf-8") as config_file:
+            for line_number, raw_line in enumerate(config_file, start=1):
+                line = raw_line.strip()
+                if not line or line.startswith("#"):
+                    continue
+
+                if line.count("=") != 1:
+                    raise ConfigError(
+                        f"line {line_number} must contain exactly one '='"
+                    )
+
+                key, value = (part.strip() for part in line.split("=", 1))
+                if not key:
+                    raise ConfigError(f"line {line_number} has an empty key")
+                if not value:
+                    raise ConfigError(f"line {line_number} has an empty value")
+                if key not in SUPPORTED_KEYS:
+                    raise ConfigError(f"unsupported configuration key: {key}")
+                if key in values:
+                    raise ConfigError(f"duplicate configuration key: {key}")
+                values[key] = value
+    except ConfigError:
+        raise
+    except (OSError, UnicodeError) as error:
+        message = f"failed to read configuration file: {path}"
+        raise ConfigError(message) from error
+
+    missing_keys = REQUIRED_KEYS - values.keys()
+    if missing_keys:
+        missing = ", ".join(sorted(missing_keys))
+        raise ConfigError(f"missing required configuration keys: {missing}")
+
+    try:
+        width = int(values["WIDTH"])
+        height = int(values["HEIGHT"])
+    except ValueError as error:
+        raise ConfigError("WIDTH and HEIGHT must be integers") from error
+
+    if width <= 0:
+        raise ConfigError("WIDTH must be greater than 0")
+    if height <= 0:
+        raise ConfigError("HEIGHT must be greater than 0")
+
+    entry  = _parse_coordinate("ENTRY", values["ENTRY"])
+    exit_position  = _parse_coordinate("EXIT", values["EXIT"])
+    for key, position in (("ENTRY", entry), ("EXIT", exit_position)):
+        x, y = position
+        if not (0 <= x < width and 0 <= y < height):
+            raise ConfigError(f"{key} must be within the maze bounds")
+    if entry == exit_position:
+        raise ConfigError("ENTRY and EXIT must be different")
+
+    perfect_value = values["PERFECT"]
+    if perfect_value not in {"True", "False"}:
+        raise ConfigError("PERFECT must be exactly True or False")
+
+    seed: int | None = None
+    if "SEED" in values:
+        try:
+            seed = int(values["SEED"])
+        except ValueError as error:
+            raise ConfigError("SEED must be an integer") from error
+
+    return Config(
+        width=width,
+        height=height,
+        entry=entry,
+        exit=exit_position,
+        output_file=values["OUTPUT_FILE"],
+        perfect=perfect_value == "True",
+        seed=seed,
+    )
