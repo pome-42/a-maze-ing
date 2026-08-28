@@ -74,8 +74,11 @@ def load_config(path: str) -> Config:
                 values[key] = value
     except ConfigError:
         raise
-    except (OSError, UnicodeError) as error:
-        message = f"failed to read configuration file: {path}"
+    except OSError as error:
+        message = f"cannot open configuration file: {path}"
+        raise ConfigError(message) from error
+    except UnicodeError as error:
+        message = f"configuration file is not valid UTF-8: {path}"
         raise ConfigError(message) from error
 
     missing_keys = REQUIRED_KEYS - values.keys()
