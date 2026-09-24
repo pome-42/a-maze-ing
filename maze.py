@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+
 from maze_types import Coordinate
 
 
@@ -16,7 +17,7 @@ class Maze:
     width: int
     height: int
     grid: list[list[int]] = field(init=False)
-    pattern_cells: set[Coordinate] = field(default_facotry=set)
+    pattern_cells: set[Coordinate] = field(default_factory=set)
 
     def __post_init__(self) -> None:
         if self.width <= 0:
@@ -29,12 +30,17 @@ class Maze:
             for _ in range(self.height)
         ]
 
-    def in_bounds(self, x: int, y: int) -> bool:
+    def in_bounds(self, position: Coordinate) -> bool:
         """Return whether the coordinate is inside the maze."""
-        return 0 <= x < self.width and 0 <= y < self.height
+        return (
+            0 <= position.x < self.width
+            and 0 <= position.y < self.height
+        )
 
-    def get_walls(self, x: int, y: int) -> int:
+    def get_walls(self, position: Coordinate) -> int:
         """Return the wall bitmask at the given coordinate."""
-        if not self.in_bounds(x, y):
-            raise IndexError(f"coordinate out of bounds: ({x}, {y})")
-        return self.grid[y][x]
+        if not self.in_bounds(position):
+            raise IndexError(
+                f"coordinate out of bounds: ({position.x}, {position.y})"
+            )
+        return self.grid[position.y][position.x]
