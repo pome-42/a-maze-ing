@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from maze_types import Coordinate
 
 
 NORTH = 1
@@ -15,7 +16,7 @@ class Maze:
     width: int
     height: int
     grid: list[list[int]] = field(init=False)
-    pattern_cells: set[tuple[int, int]] = field(default_factory=set)
+    pattern_cells: set[Coordinate] = field(default_facotry=set)
 
     def __post_init__(self) -> None:
         if self.width <= 0:
