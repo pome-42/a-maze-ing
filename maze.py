@@ -13,6 +13,10 @@ class Maze:
     pattern_cells: set[Coordinate] = field(default_factory=set)
 
     def __post_init__(self) -> None:
+        if isinstance(self.width, bool) or not isinstance(self.width, int):
+            raise TypeError("width must be an integer")
+        if isinstance(self.height, bool) or not isinstance(self.height, int):
+            raise TypeError("height must be an integer")
         if self.width <= 0:
             raise ValueError("width must be greater than 0")
         if self.height <= 0:

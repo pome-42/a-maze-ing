@@ -131,3 +131,13 @@ class MazeInitialStateTests(TestCase):
     def test_negative_height_is_rejected(self) -> None:
         with self.assertRaises(ValueError):
             Maze(width=2, height=-1)
+
+    def test_non_integer_dimensions_are_rejected(self) -> None:
+        with self.assertRaises(TypeError):
+            Maze(width=1.5, height=2)  # type: ignore[arg-type]
+        with self.assertRaises(TypeError):
+            Maze(width=2, height="2")  # type: ignore[arg-type]
+        with self.assertRaises(TypeError):
+            Maze(width=True, height=2)
+        with self.assertRaises(TypeError):
+            Maze(width=2, height=False)
