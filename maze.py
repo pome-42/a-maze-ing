@@ -37,3 +37,20 @@ class Maze:
                 f"coordinate out of bounds: ({position.x}, {position.y})"
             )
         return self.grid[position.y][position.x]
+
+    def reserve_pattern_cells(self, cells: set[Coordinate]) -> None:
+        """Reserve fully closed cells for the mandatory pattern."""
+        candidate = set(cells)
+        for position in candidate:
+            if not isinstance(position, Coordinate):
+                raise TypeError("pattern cells must be Coordinate instances")
+            if not self.in_bounds(position):
+                raise ValueError(
+                    f"pattern cell out of bounds: ({position.x}, {position.y})"
+                )
+            if self.get_walls(position) != ALL_WALLS:
+                raise ValueError(
+                    f"pattern cell must be fully closed: "
+                    f"({position.x}, {position.y})"
+                )
+        self.pattern_cells = candidate

@@ -45,6 +45,44 @@ class MazeInitialStateTests(TestCase):
         self.assertIn(Coordinate(0, 0), first_maze.pattern_cells)
         self.assertNotIn(Coordinate(0, 0), second_maze.pattern_cells)
 
+    def test_pattern_cells_can_be_reserved(self) -> None:
+        maze = Maze(width=4, height=2)
+        cells = {Coordinate(1, 0), Coordinate(2, 1)}
+
+        maze.reserve_pattern_cells(cells)
+
+        self.assertEqual(maze.pattern_cells, cells)
+        for position in cells:
+            self.assertEqual(maze.get_walls(position), ALL_WALLS)
+
+    def test_reserved_pattern_cells_are_copied(self) -> None:
+        maze = Maze(width=4, height=2)
+        cells = {Coordinate(1, 0)}
+
+        maze.reserve_pattern_cells(cells)
+        cells.add(Coordinate(2, 1))
+
+        self.assertNotIn(Coordinate(2, 1), maze.pattern_cells)
+
+    def test_out_of_bounds_pattern_cell_is_rejected_atomically(self) -> None:
+        maze = Maze(width=4, height=2)
+        maze.reserve_pattern_cells({Coordinate(0, 0)})
+
+        with self.assertRaises(ValueError):
+            maze.reserve_pattern_cells({Coordinate(1, 0), Coordinate(4, 0)})
+
+        self.assertEqual(maze.pattern_cells, {Coordinate(0, 0)})
+
+    def test_open_pattern_cell_is_rejected_atomically(self) -> None:
+        maze = Maze(width=4, height=2)
+        maze.grid[0][1] = Wall.NORTH
+        maze.reserve_pattern_cells({Coordinate(0, 0)})
+
+        with self.assertRaises(ValueError):
+            maze.reserve_pattern_cells({Coordinate(0, 0), Coordinate(1, 0)})
+
+        self.assertEqual(maze.pattern_cells, {Coordinate(0, 0)})
+
     def test_in_bounds_accepts_coordinates_inside_maze(self) -> None:
         maze = Maze(width=4, height=2)
 
