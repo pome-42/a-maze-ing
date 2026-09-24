@@ -1,6 +1,19 @@
 """Shared value types for the maze model."""
 
 from dataclasses import dataclass
+from enum import IntFlag
+
+
+class Wall(IntFlag):
+    """Closed maze walls represented as bit flags."""
+
+    NORTH = 1
+    EAST = 2
+    SOUTH = 4
+    WEST = 8
+
+
+ALL_WALLS = Wall.NORTH | Wall.EAST | Wall.SOUTH | Wall.WEST
 
 
 @dataclass(frozen=True, slots=True)

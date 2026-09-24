@@ -1,13 +1,6 @@
 from dataclasses import dataclass, field
 
-from maze_types import Coordinate
-
-
-NORTH = 1
-EAST = 2
-SOUTH = 4
-WEST = 8
-ALL_WALLS = NORTH | EAST | SOUTH | WEST
+from maze_types import ALL_WALLS, Coordinate, Wall
 
 
 @dataclass
@@ -16,7 +9,7 @@ class Maze:
 
     width: int
     height: int
-    grid: list[list[int]] = field(init=False)
+    grid: list[list[Wall]] = field(init=False)
     pattern_cells: set[Coordinate] = field(default_factory=set)
 
     def __post_init__(self) -> None:
@@ -37,7 +30,7 @@ class Maze:
             and 0 <= position.y < self.height
         )
 
-    def get_walls(self, position: Coordinate) -> int:
+    def get_walls(self, position: Coordinate) -> Wall:
         """Return the wall bitmask at the given coordinate."""
         if not self.in_bounds(position):
             raise IndexError(
