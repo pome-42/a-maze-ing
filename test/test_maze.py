@@ -62,8 +62,9 @@ class MazeInitialStateTests(TestCase):
     def test_get_walls_returns_walls_at_coordinate(self) -> None:
         maze = Maze(width=4, height=2)
         position = Coordinate(3, 1)
+        maze.grid[position.y][position.x] = Wall.NORTH
 
-        self.assertEqual(maze.get_walls(position), ALL_WALLS)
+        self.assertEqual(maze.get_walls(position), Wall.NORTH)
 
     def test_get_walls_rejects_coordinates_outside_maze(self) -> None:
         maze = Maze(width=4, height=2)

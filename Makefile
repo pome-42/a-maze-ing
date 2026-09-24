@@ -8,6 +8,10 @@ run:
 debug:
 
 
+test:
+	uv run python -m unittest discover -s test -v
+
+
 clean:
 	rm -rf __pycache__ .mypy_cache .pytest_cache
 
@@ -26,4 +30,4 @@ lint-strict:
 	uv run mypy --strict .
 
 
-.PHONY: install run debug clean lint lint-strict
+.PHONY: install run debug test clean lint lint-strict

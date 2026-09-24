@@ -30,3 +30,6 @@ jobs:
 
       - name: Run strict lint checks
         run: make lint-strict
+
+      - name: Run unit tests
+        run: make test

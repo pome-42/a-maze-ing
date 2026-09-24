@@ -24,10 +24,10 @@ class CoordinateTests(TestCase):
 
     def test_reject_non_integer_coordinate(self) -> None:
         with self.assertRaises(TypeError):
-            Coordinate(1.5, 2)
+            Coordinate(1.5, 2)  # type: ignore[arg-type]
 
         with self.assertRaises(TypeError):
-            Coordinate(1, "2")
+            Coordinate(1, "2")  # type: ignore[arg-type]
 
         with self.assertRaises(TypeError):
             Coordinate(True, 2)
@@ -39,4 +39,4 @@ class CoordinateTests(TestCase):
         position = Coordinate(4, 2)
 
         with self.assertRaises(FrozenInstanceError):
-            position.x = 5
+            position.x = 5  # type: ignore[misc]
