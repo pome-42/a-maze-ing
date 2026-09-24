@@ -1,3 +1,5 @@
+"""Shared value types for the maze model."""
+
 from dataclasses import dataclass
 
 
