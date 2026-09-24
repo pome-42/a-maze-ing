@@ -10,7 +10,10 @@ class Maze:
     width: int
     height: int
     grid: list[list[Wall]] = field(init=False)
-    pattern_cells: set[Coordinate] = field(default_factory=set)
+    _pattern_cells: set[Coordinate] = field(
+        init=False,
+        default_factory=set,
+    )
 
     def __post_init__(self) -> None:
         if isinstance(self.width, bool) or not isinstance(self.width, int):
@@ -42,6 +45,11 @@ class Maze:
             )
         return self.grid[position.y][position.x]
 
+    @property
+    def pattern_cells(self) -> frozenset[Coordinate]:
+        """Return the reserved pattern cells without exposing mutable state."""
+        return frozenset(self._pattern_cells)
+
     def reserve_pattern_cells(self, cells: set[Coordinate]) -> None:
         """Reserve fully closed cells for the mandatory pattern."""
         candidate = set(cells)
@@ -57,4 +65,4 @@ class Maze:
                     f"pattern cell must be fully closed: "
                     f"({position.x}, {position.y})"
                 )
-        self.pattern_cells = candidate
+        self._pattern_cells = candidate

@@ -40,10 +40,21 @@ class MazeInitialStateTests(TestCase):
         first_maze = Maze(width=4, height=2)
         second_maze = Maze(width=4, height=2)
 
-        first_maze.pattern_cells.add(Coordinate(0, 0))
+        first_maze.reserve_pattern_cells({Coordinate(0, 0)})
 
         self.assertIn(Coordinate(0, 0), first_maze.pattern_cells)
         self.assertNotIn(Coordinate(0, 0), second_maze.pattern_cells)
+
+    def test_pattern_cells_are_read_only(self) -> None:
+        maze = Maze(width=4, height=2)
+        maze.reserve_pattern_cells({Coordinate(0, 0)})
+        reserved = maze.pattern_cells
+
+        with self.assertRaises(AttributeError):
+            reserved.add(Coordinate(1, 0))  # type: ignore[attr-defined]
+
+        with self.assertRaises(AttributeError):
+            maze.pattern_cells = frozenset()  # type: ignore[misc]
 
     def test_pattern_cells_can_be_reserved(self) -> None:
         maze = Maze(width=4, height=2)
