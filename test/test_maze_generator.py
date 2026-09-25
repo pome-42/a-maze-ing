@@ -367,3 +367,51 @@ class MazeGeneratorTests(TestCase):
                 (Coordinate(0, 1), Wall.WEST),
             ],
         )
+
+    def test_carve_tree_connects_every_playable_cell_without_loops(
+        self,
+    ) -> None:
+        generator = MazeGenerator(3, 2, seed=42)
+        maze = Maze(3, 2)
+        playable = generator._playable_cells(set())
+
+        generator._carve_tree(maze, playable, Coordinate(0, 0))
+
+        edge_count = 0
+        for y in range(2):
+            for x in range(3):
+                if x < 2 and not maze.get_walls(
+                    Coordinate(x, y)
+                ) & Wall.EAST:
+                    edge_count += 1
+                if y < 1 and not maze.get_walls(
+                    Coordinate(x, y)
+                ) & Wall.SOUTH:
+                    edge_count += 1
+        self.assertEqual(edge_count, len(playable) - 1)
+
+    def test_carve_tree_keeps_pattern_cell_closed(self) -> None:
+        generator = MazeGenerator(3, 2, seed=42)
+        maze = Maze(3, 2)
+        pattern = {Coordinate(1, 1)}
+        maze.reserve_pattern_cells(pattern)
+
+        generator._carve_tree(
+            maze,
+            generator._playable_cells(pattern),
+            Coordinate(0, 0),
+        )
+
+        self.assertEqual(maze.get_walls(Coordinate(1, 1)), ALL_WALLS)
+
+    def test_carve_tree_rejects_start_inside_pattern(self) -> None:
+        generator = MazeGenerator(3, 2)
+        maze = Maze(3, 2)
+        pattern = {Coordinate(1, 1)}
+
+        with self.assertRaises(ValueError):
+            generator._carve_tree(
+                maze,
+                generator._playable_cells(pattern),
+                Coordinate(1, 1),
+            )

@@ -1,5 +1,6 @@
 """Generate perfect mazes and reserve the visible 42 pattern."""
 from dataclasses import dataclass
+import random
 
 from maze import DIRECTION_STEPS, Maze
 from maze_types import Coordinate, Wall
@@ -58,6 +59,7 @@ class MazeGenerator:
         self.width = width
         self.height = height
         self.seed = seed
+        self._random = random.Random(seed)
 
     def _mask_cells(self, origin: Coordinate) -> set[Coordinate]:
         """Return the reserved cells for the mask at the given origin."""
@@ -241,3 +243,41 @@ class MazeGenerator:
                 neighbours.append((neighbour, direction))
 
         return neighbours
+
+    def _carve_tree(
+        self,
+        maze: Maze,
+        playable_cells: set[Coordinate],
+        start: Coordinate
+    ) -> None:
+        """Carve a spanning tree through every playable cell."""
+        if start not in playable_cells:
+            raise ValueError("start must be a playable cell")
+
+        visited = {start}
+        stack = [start]
+
+        while stack:
+            current = stack[-1]
+            choices = [
+                (neighbour, direction)
+                for neighbour, direction in self._neighbours(current)
+                if (
+                    neighbour in playable_cells
+                    and neighbour not in visited
+                )
+            ]
+
+            if not choices:
+                stack.pop()
+                continue
+
+            neighbour, direction = self._random.choice(choices)
+            maze.open_wall(current, direction)
+            visited.add(neighbour)
+            stack.append(neighbour)
+
+        if visited != playable_cells:
+            raise ValueError(
+                "playable cells cannot form one connected maze"
+            )
