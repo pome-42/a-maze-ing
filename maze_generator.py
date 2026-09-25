@@ -68,7 +68,7 @@ class MazeGenerator:
     def _candidate_origins_without_terminals(
         self,
         entry: Coordinate,
-        exit: Coordinate
+        exit: Coordinate,
     ) -> list[Coordinate]:
         """Return fitting origins that do not reserve entry or exit."""
         origins: list[Coordinate] = []
@@ -84,7 +84,7 @@ class MazeGenerator:
     def _is_connected_without_pattern(
         self,
         pattern_cells: set[Coordinate],
-        start: Coordinate
+        start: Coordinate,
     ) -> bool:
         """Return whether all non-pattern cells form one component."""
         playable = {
@@ -102,10 +102,10 @@ class MazeGenerator:
         while pending:
             current = pending.pop()
 
-            for directon, (dx, dy) in DIRECTION_STEPS.items():
+            for direction, (dx, dy) in DIRECTION_STEPS.items():
                 neighbour = Coordinate(
                     current.x + dx,
-                    current.y + dy
+                    current.y + dy,
                 )
                 if (
                     neighbour in playable
@@ -115,3 +115,39 @@ class MazeGenerator:
                     pending.append(neighbour)
 
         return visited == playable
+
+    def _select_pattern_cells(
+        self,
+        entry: Coordinate,
+        exit: Coordinate,
+    ) -> set[Coordinate] | None:
+        """Select a connected pattern placement avoiding terminals."""
+        fitting_origins = self._candidate_origins()
+
+        if not fitting_origins:
+            return None
+
+        terminal_safe_origins = (
+            self._candidate_origins_without_terminals(
+                entry,
+                exit,
+            )
+        )
+
+        if not terminal_safe_origins:
+            raise ValueError(
+                "no pattern placement avoids the entry and exit"
+            )
+
+        for origin in terminal_safe_origins:
+            pattern_cells = self._mask_cells(origin)
+
+            if self._is_connected_without_pattern(
+                pattern_cells,
+                entry,
+            ):
+                return pattern_cells
+
+        raise ValueError(
+            "no pattern placement preserves playable-cell connectivity"
+        )

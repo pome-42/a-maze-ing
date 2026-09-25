@@ -173,3 +173,41 @@ class MazeGeneratorTests(TestCase):
                 Coordinate(1, 1),
             )
         )
+
+    def test_selects_connected_pattern_avoiding_terminals(self) -> None:
+        generator = MazeGenerator(10, 8)
+
+        pattern_cells = generator._select_pattern_cells(
+            Coordinate(0, 0),
+            Coordinate(9, 7),
+        )
+
+        self.assertIsNotNone(pattern_cells)
+        assert pattern_cells is not None
+        self.assertNotIn(Coordinate(0, 0), pattern_cells)
+        self.assertNotIn(Coordinate(9, 7), pattern_cells)
+        self.assertTrue(
+            generator._is_connected_without_pattern(
+                pattern_cells,
+                Coordinate(0, 0),
+            )
+        )
+
+    def test_select_returns_none_when_pattern_does_not_fit(self) -> None:
+        generator = MazeGenerator(6, 8)
+
+        self.assertIsNone(
+            generator._select_pattern_cells(
+                Coordinate(0, 0),
+                Coordinate(5, 7),
+            )
+        )
+
+    def test_select_rejects_terminals_covering_only_candidate(self) -> None:
+        generator = MazeGenerator(7, 5)
+
+        with self.assertRaises(ValueError):
+            generator._select_pattern_cells(
+                Coordinate(0, 0),
+                Coordinate(6, 0),
+            )
