@@ -106,6 +106,20 @@ class MazeInitialStateTests(TestCase):
 
         self.assertEqual(maze.pattern_cells, first_snapshot)
 
+    def test_invalid_pattern_cell_type_is_rejected_atomically(self) -> None:
+        maze = Maze(width=4, height=2)
+        maze.reserve_pattern_cells({Coordinate(0, 0)})
+        maze.open_wall(Coordinate(1, 0), Wall.SOUTH)
+        initial_grid = maze.grid
+        initial_pattern_cells = maze.pattern_cells
+        invalid_cells: set[object] = {Coordinate(2, 0), "invalid"}
+
+        with self.assertRaises(TypeError):
+            maze.reserve_pattern_cells(invalid_cells)  # type: ignore[arg-type]
+
+        self.assertEqual(maze.grid, initial_grid)
+        self.assertEqual(maze.pattern_cells, initial_pattern_cells)
+
     def test_reserving_empty_pattern_cells_clears_reservation(self) -> None:
         maze = Maze(width=4, height=2)
         maze.reserve_pattern_cells({Coordinate(1, 0)})
