@@ -93,6 +93,15 @@ class MazeGenerator:
                 if self._mask_fits(origin):
                     origins.append(origin)
 
+        center_x = (self.width - len(_PATTERN_MASK[0])) / 2
+        center_y = (self.height - len(_PATTERN_MASK)) / 2
+        origins.sort(
+            key=lambda origin: (
+                abs(origin.x - center_x) + abs(origin.y - center_y),
+                origin.y,
+                origin.x,
+            )
+        )
         return origins
 
     def _candidate_origins_without_terminals(
