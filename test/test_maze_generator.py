@@ -123,6 +123,17 @@ class MazeGeneratorTests(TestCase):
         self.assertEqual(first.pattern_cells, second.pattern_cells)
         self.assertEqual(first.seed, second.seed)
 
+    def test_non_perfect_generation_keeps_snapshots_stable(self) -> None:
+        generator = MazeGenerator(10, 8, seed=42)
+        first = generator.generate(perfect=False)
+        grid_snapshot = first.grid
+        pattern_snapshot = first.pattern_cells
+
+        generator.generate(perfect=False)
+
+        self.assertEqual(first.grid, grid_snapshot)
+        self.assertEqual(first.pattern_cells, pattern_snapshot)
+
     def test_non_perfect_mode_rejects_too_small_graph(self) -> None:
         with self.assertRaises(ValueError):
             MazeGenerator(2, 2, seed=42).generate(perfect=False)
