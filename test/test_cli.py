@@ -36,9 +36,15 @@ class CliTests(TestCase):
     def test_valid_configuration_succeeds(self) -> None:
         with TemporaryDirectory() as directory:
             config_path = Path(directory) / "config.txt"
-            config_path.write_text(VALID_CONFIG, encoding="utf-8")
+            output_path = Path(directory) / "maze.txt"
+            config_path.write_text(
+                VALID_CONFIG.replace("maze.txt", str(output_path)),
+                encoding="utf-8",
+            )
 
             result = self.run_cli(str(config_path))
+            output_exists = output_path.exists()
+            output_text = output_path.read_text(encoding="utf-8")
 
         self.assertEqual(result.returncode, 0)
         self.assertIn("Configuration loaded successfully.", result.stdout)
@@ -46,6 +52,61 @@ class CliTests(TestCase):
         self.assertIn("Seed: 42", result.stdout)
         self.assertIn("Maze data initialized.", result.stdout)
         self.assertEqual(result.stderr, "")
+        self.assertTrue(output_exists)
+        self.assertTrue(output_text.endswith("\n"))
+        output_lines = output_text.splitlines()
+        self.assertEqual(len(output_lines), 12)
+        self.assertEqual(output_lines[8], "")
+        self.assertEqual(output_lines[9:11], ["0,0", "9,7"])
+        self.assertRegex(output_lines[11], r"^[NESW]*$")
+
+    def test_small_maze_warns_when_42_is_omitted(self) -> None:
+        with TemporaryDirectory() as directory:
+            config_path = Path(directory) / "config.txt"
+            output_path = Path(directory) / "maze.txt"
+            config_path.write_text(
+                VALID_CONFIG.replace("WIDTH=10", "WIDTH=6")
+                .replace("HEIGHT=8", "HEIGHT=4")
+                .replace("EXIT=9,7", "EXIT=5,3")
+                .replace("maze.txt", str(output_path)),
+                encoding="utf-8",
+            )
+
+            result = self.run_cli(str(config_path))
+            output_exists = output_path.exists()
+
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("pattern omitted", result.stderr)
+        self.assertTrue(output_exists)
+
+    def test_non_perfect_configuration_is_rejected(self) -> None:
+        with TemporaryDirectory() as directory:
+            config_path = Path(directory) / "config.txt"
+            config_path.write_text(
+                VALID_CONFIG.replace("PERFECT=True", "PERFECT=False"),
+                encoding="utf-8",
+            )
+
+            result = self.run_cli(str(config_path))
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("PERFECT=False is not supported", result.stderr)
+        self.assertNotIn("Traceback", result.stderr)
+
+    def test_save_failure_is_reported_without_traceback(self) -> None:
+        with TemporaryDirectory() as directory:
+            config_path = Path(directory) / "config.txt"
+            missing_parent = Path(directory) / "missing" / "maze.txt"
+            config_path.write_text(
+                VALID_CONFIG.replace("maze.txt", str(missing_parent)),
+                encoding="utf-8",
+            )
+
+            result = self.run_cli(str(config_path))
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("generation error:", result.stderr)
+        self.assertNotIn("Traceback", result.stderr)
 
     def test_missing_argument_shows_usage_without_traceback(self) -> None:
         result = self.run_cli()
