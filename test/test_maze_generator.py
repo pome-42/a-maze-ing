@@ -468,6 +468,12 @@ class MazeGeneratorTests(TestCase):
         self.assertEqual(result.pattern_cells, frozenset())
         self.assertTrue(result.pattern_omitted)
 
+    def test_generate_rejects_geometric_fit_without_valid_placement(
+        self,
+    ) -> None:
+        with self.assertRaises(ValueError):
+            MazeGenerator(7, 5, seed=42).generate()
+
     def test_generate_validates_multiple_sizes_and_seeds(self) -> None:
         cases = (
             (2, 2),
