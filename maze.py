@@ -3,6 +3,21 @@ from dataclasses import dataclass, field
 from maze_types import ALL_WALLS, Coordinate, Wall
 
 
+DIRECTION_STEPS = {
+    Wall.NORTH: (0, -1),
+    Wall.EAST: (1, 0),
+    Wall.SOUTH: (0, 1),
+    Wall.WEST: (-1, 0)
+}
+
+OPPOSITE_WALLS = {
+    Wall.NORTH: Wall.SOUTH,
+    Wall.EAST: Wall.WEST,
+    Wall.SOUTH: Wall.NORTH,
+    Wall.WEST: Wall.EAST
+}
+
+
 @dataclass
 class Maze:
     """Store the mutable grid and reserved cells of a maze."""
