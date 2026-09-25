@@ -454,6 +454,11 @@ class MazeGenerator:
 
         report = self._validation_report(result, perfect=False)
         if not report.is_valid:
+            if not self._has_only_mode_errors(report):
+                raise RuntimeError(
+                    "generated maze failed validation: "
+                    + "; ".join(report.errors)
+                )
             raise ValueError(
                 "cannot generate a non-perfect maze: "
                 + "; ".join(report.errors)
