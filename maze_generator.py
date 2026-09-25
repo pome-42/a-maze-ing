@@ -248,7 +248,7 @@ class MazeGenerator:
         self,
         maze: Maze,
         playable_cells: set[Coordinate],
-        start: Coordinate
+        start: Coordinate,
     ) -> None:
         """Carve a spanning tree through every playable cell."""
         if start not in playable_cells:
@@ -281,3 +281,30 @@ class MazeGenerator:
             raise ValueError(
                 "playable cells cannot form one connected maze"
             )
+
+    def generate(
+        self,
+        entry: Coordinate = Coordinate(0, 0),
+        exit: Coordinate | None = None,
+    ) -> GeneratedMaze:
+        """Generate a perfect maze and return its result."""
+        if exit is None:
+            exit = Coordinate(self.width - 1, self.height - 1)
+
+        self._validate_terminals(entry, exit)
+
+        maze = Maze(self.width, self.height)
+        pattern_cells = self._reserve_pattern(
+            maze,
+            entry,
+            exit,
+        )
+        playable_cells = self._playable_cells(pattern_cells)
+        self._carve_tree(maze, playable_cells, entry)
+
+        return GeneratedMaze(
+            maze=maze,
+            entry=entry,
+            exit=exit,
+            seed=self.seed,
+        )

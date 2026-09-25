@@ -6,6 +6,7 @@ from unittest import TestCase
 from maze import Maze
 from maze_generator import GeneratedMaze, MazeGenerator
 from maze_types import ALL_WALLS, Coordinate, Wall
+from maze_validator import MazeValidationInput, validate_maze
 
 
 class MazeGeneratorTests(TestCase):
@@ -415,3 +416,42 @@ class MazeGeneratorTests(TestCase):
                 generator._playable_cells(pattern),
                 Coordinate(1, 1),
             )
+
+    def test_generate_returns_a_valid_perfect_maze(self) -> None:
+        result = MazeGenerator(10, 8, seed=42).generate(
+            Coordinate(0, 0),
+            Coordinate(9, 7),
+        )
+
+        report = validate_maze(
+            MazeValidationInput(
+                grid=result.grid,
+                width=10,
+                height=8,
+                entry=result.entry,
+                exit=result.exit,
+                pattern_cells=result.pattern_cells,
+                perfect=True,
+            )
+        )
+
+        self.assertTrue(report.is_valid, report.errors)
+        self.assertEqual(report.loop_count, 0)
+
+    def test_generate_is_reproducible_with_same_seed(self) -> None:
+        first = MazeGenerator(10, 8, seed=42).generate()
+        second = MazeGenerator(10, 8, seed=42).generate()
+
+        self.assertEqual(first.grid, second.grid)
+        self.assertEqual(first.pattern_cells, second.pattern_cells)
+
+    def test_generate_uses_bottom_right_exit_by_default(self) -> None:
+        result = MazeGenerator(4, 3, seed=42).generate()
+
+        self.assertEqual(result.entry, Coordinate(0, 0))
+        self.assertEqual(result.exit, Coordinate(3, 2))
+
+    def test_generate_omits_pattern_for_small_maze(self) -> None:
+        result = MazeGenerator(6, 4, seed=42).generate()
+
+        self.assertEqual(result.pattern_cells, frozenset())
