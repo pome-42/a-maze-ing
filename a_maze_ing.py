@@ -25,20 +25,16 @@ def a_maze_ing(argv: Sequence[str] | None = None) -> int:
         print(f"configuration error: {error}", file=sys.stderr)
         return 1
 
-    if not setup.perfect:
-        print(
-            "generation error: PERFECT=False is not supported yet; "
-            "use PERFECT=True",
-            file=sys.stderr,
-        )
-        return 1
-
     try:
         generated = MazeGenerator(
             setup.maze.width,
             setup.maze.height,
             seed=setup.seed,
-        ).generate(setup.entry, setup.exit)
+        ).generate(
+            setup.entry,
+            setup.exit,
+            perfect=setup.perfect,
+        )
         solution = shortest_path(
             generated.maze,
             generated.entry,
@@ -61,7 +57,7 @@ def a_maze_ing(argv: Sequence[str] | None = None) -> int:
     print(f"Maze size: {generated.maze.width} x {generated.maze.height}")
     print(f"Entry: ({generated.entry.x}, {generated.entry.y})")
     print(f"Exit: ({generated.exit.x}, {generated.exit.y})")
-    print("Perfect: True")
+    print(f"Perfect: {setup.perfect}")
     print(f"Seed: {generated.seed}")
     print("Maze data initialized.")
     print(f"Maze saved to: {setup.output_file}")
