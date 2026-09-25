@@ -4,6 +4,7 @@ import random
 
 from maze import DIRECTION_STEPS, Maze
 from maze_types import Coordinate, Wall
+from maze_validator import MazeValidationInput, validate_maze
 
 _PATTERN_MASK = (
     "1000111",
@@ -302,9 +303,29 @@ class MazeGenerator:
         playable_cells = self._playable_cells(pattern_cells)
         self._carve_tree(maze, playable_cells, entry)
 
-        return GeneratedMaze(
+        result = GeneratedMaze(
             maze=maze,
             entry=entry,
             exit=exit,
             seed=self.seed,
         )
+
+        report = validate_maze(
+            MazeValidationInput(
+                grid=result.grid,
+                width=self.width,
+                height=self.height,
+                entry=result.entry,
+                exit=result.exit,
+                pattern_cells=result.pattern_cells,
+                perfect=True,
+            )
+        )
+
+        if not report.is_valid:
+            raise RuntimeError(
+                "generated maze failed validation: "
+                + "; ".join(report.errors)
+            )
+
+        return result
