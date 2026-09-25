@@ -2,8 +2,9 @@
 
 from unittest import TestCase
 
+from maze import Maze
 from maze_generator import MazeGenerator
-from maze_types import Coordinate
+from maze_types import ALL_WALLS, Coordinate
 
 
 class MazeGeneratorTests(TestCase):
@@ -208,6 +209,46 @@ class MazeGeneratorTests(TestCase):
 
         with self.assertRaises(ValueError):
             generator._select_pattern_cells(
+                Coordinate(0, 0),
+                Coordinate(6, 0),
+            )
+
+    def test_reserves_selected_pattern_cells_in_maze(self) -> None:
+        generator = MazeGenerator(10, 8)
+        maze = Maze(10, 8)
+
+        pattern_cells = generator._reserve_pattern(
+            maze,
+            Coordinate(0, 0),
+            Coordinate(9, 7),
+        )
+
+        self.assertTrue(pattern_cells)
+        self.assertEqual(maze.pattern_cells, pattern_cells)
+        self.assertTrue(
+            all(maze.get_walls(cell) == ALL_WALLS for cell in pattern_cells)
+        )
+
+    def test_reserve_returns_empty_for_small_maze(self) -> None:
+        generator = MazeGenerator(6, 8)
+        maze = Maze(6, 8)
+
+        pattern_cells = generator._reserve_pattern(
+            maze,
+            Coordinate(0, 0),
+            Coordinate(5, 7),
+        )
+
+        self.assertEqual(pattern_cells, set())
+        self.assertEqual(maze.pattern_cells, frozenset())
+
+    def test_reserve_propagates_terminal_collision(self) -> None:
+        generator = MazeGenerator(7, 5)
+        maze = Maze(7, 5)
+
+        with self.assertRaises(ValueError):
+            generator._reserve_pattern(
+                maze,
                 Coordinate(0, 0),
                 Coordinate(6, 0),
             )
