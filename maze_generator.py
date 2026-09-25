@@ -1,6 +1,7 @@
 """Generate perfect mazes and reserve the visible 42 pattern."""
 from dataclasses import dataclass
 import random
+import secrets
 
 from maze import DIRECTION_STEPS, Maze
 from maze_types import Coordinate, Wall
@@ -22,7 +23,7 @@ class GeneratedMaze:
     maze: Maze
     entry: Coordinate
     exit: Coordinate
-    seed: int | None
+    seed: int
 
     @property
     def grid(self) -> tuple[tuple[Wall, ...], ...]:
@@ -59,8 +60,11 @@ class MazeGenerator:
 
         self.width = width
         self.height = height
-        self.seed = seed
-        self._random = random.Random(seed)
+        resolved_seed = (
+            seed if seed is not None else secrets.randbits(64)
+        )
+        self.seed = resolved_seed
+        self._random = random.Random(resolved_seed)
 
     def _mask_cells(self, origin: Coordinate) -> set[Coordinate]:
         """Return the reserved cells for the mask at the given origin."""
