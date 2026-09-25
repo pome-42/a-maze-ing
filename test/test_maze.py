@@ -87,21 +87,27 @@ class MazeInitialStateTests(TestCase):
     def test_out_of_bounds_pattern_cell_is_rejected_atomically(self) -> None:
         maze = Maze(width=4, height=2)
         maze.reserve_pattern_cells({Coordinate(0, 0)})
+        initial_grid = maze.grid
+        initial_pattern_cells = maze.pattern_cells
 
         with self.assertRaises(ValueError):
             maze.reserve_pattern_cells({Coordinate(1, 0), Coordinate(4, 0)})
 
-        self.assertEqual(maze.pattern_cells, {Coordinate(0, 0)})
+        self.assertEqual(maze.grid, initial_grid)
+        self.assertEqual(maze.pattern_cells, initial_pattern_cells)
 
     def test_open_pattern_cell_is_rejected_atomically(self) -> None:
         maze = Maze(width=4, height=2)
         maze.reserve_pattern_cells({Coordinate(0, 0)})
         maze.open_wall(Coordinate(1, 0), Wall.SOUTH)
+        initial_grid = maze.grid
+        initial_pattern_cells = maze.pattern_cells
 
         with self.assertRaises(ValueError):
             maze.reserve_pattern_cells({Coordinate(0, 0), Coordinate(1, 0)})
 
-        self.assertEqual(maze.pattern_cells, {Coordinate(0, 0)})
+        self.assertEqual(maze.grid, initial_grid)
+        self.assertEqual(maze.pattern_cells, initial_pattern_cells)
 
     def test_in_bounds_accepts_coordinates_inside_maze(self) -> None:
         maze = Maze(width=4, height=2)
