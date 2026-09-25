@@ -60,6 +60,30 @@ class Maze:
             )
         return self.grid[position.y][position.x]
 
+    def open_wall(self, position: Coordinate, direction: Wall) -> None:
+        """Open one wall and the matching wall of its neighbour."""
+        if not isinstance(position, Coordinate):
+            raise TypeError("position must be a Coordinate")
+        if not self.in_bounds(position):
+            raise IndexError(
+                f"coordinate out of bounds: ({position.x}, {position.y})"
+            )
+        if not isinstance(direction, Wall) or direction not in DIRECTION_STEPS:
+            raise ValueError("direction must be one cardinal Wall value")
+        if position in self._pattern_cells:
+            raise ValueError("cannot open a wall of a pattern cell")
+
+        dx, dy = DIRECTION_STEPS[direction]
+        neighbour = Coordinate(position.x + dx, position.y + dy)
+        if not self.in_bounds(neighbour):
+            raise ValueError("cannot open a wall on the outer boundary")
+        if neighbour in self._pattern_cells:
+            raise ValueError("cannot open a wall towards a pattern cell")
+
+        opposite = OPPOSITE_WALLS[direction]
+        self.grid[position.y][position.x] &= ~direction
+        self.grid[neighbour.y][neighbour.x] &= ~opposite
+
     @property
     def pattern_cells(self) -> frozenset[Coordinate]:
         """Return the reserved pattern cells without exposing mutable state."""
