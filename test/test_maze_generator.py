@@ -128,19 +128,20 @@ class MazeGeneratorTests(TestCase):
         self.assertFalse(generator._mask_fits(Coordinate(0, 0)))
         self.assertFalse(generator._mask_fits(Coordinate(4, 3)))
 
-    def test_candidate_origins_cover_all_fitting_positions_in_order(
+    def test_candidate_origins_prioritize_the_center(
         self,
     ) -> None:
         generator = MazeGenerator(10, 8)
 
         origins = generator._candidate_origins()
 
-        expected = [
-            Coordinate(x, y)
-            for y in range(4)
-            for x in range(4)
-        ]
-        self.assertEqual(origins, expected)
+        self.assertEqual(origins[:4], [
+            Coordinate(1, 1),
+            Coordinate(2, 1),
+            Coordinate(1, 2),
+            Coordinate(2, 2),
+        ])
+        self.assertEqual(len(origins), 16)
 
     def test_candidate_origins_are_empty_when_mask_does_not_fit(self) -> None:
         self.assertEqual(
