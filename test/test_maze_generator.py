@@ -119,3 +119,57 @@ class MazeGeneratorTests(TestCase):
             MazeGenerator(7, 5)._candidate_origins(),
             [Coordinate(0, 0)],
         )
+
+    def test_terminal_overlap_is_removed_from_candidates(self) -> None:
+        generator = MazeGenerator(10, 8)
+
+        origins = generator._candidate_origins_without_terminals(
+            Coordinate(0, 0),
+            Coordinate(9, 7),
+        )
+
+        self.assertEqual(len(origins), 14)
+        self.assertNotIn(Coordinate(0, 0), origins)
+        self.assertNotIn(Coordinate(3, 3), origins)
+
+    def test_non_overlapping_terminals_keep_all_candidates(self) -> None:
+        generator = MazeGenerator(10, 8)
+
+        origins = generator._candidate_origins_without_terminals(
+            Coordinate(0, 6),
+            Coordinate(1, 7),
+        )
+
+        self.assertEqual(len(origins), 16)
+
+    def test_playable_cells_are_connected_without_pattern(self) -> None:
+        generator = MazeGenerator(4, 3)
+
+        self.assertTrue(
+            generator._is_connected_without_pattern(
+                {Coordinate(1, 1)},
+                Coordinate(0, 0),
+            )
+        )
+
+    def test_pattern_can_split_playable_cells(self) -> None:
+        generator = MazeGenerator(5, 5)
+        barrier = {Coordinate(2, y) for y in range(5)}
+
+        self.assertFalse(
+            generator._is_connected_without_pattern(
+                barrier,
+                Coordinate(0, 0),
+            )
+        )
+
+    def test_starting_inside_pattern_is_not_playable(self) -> None:
+        generator = MazeGenerator(4, 3)
+        pattern = {Coordinate(1, 1)}
+
+        self.assertFalse(
+            generator._is_connected_without_pattern(
+                pattern,
+                Coordinate(1, 1),
+            )
+        )
