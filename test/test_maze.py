@@ -23,13 +23,22 @@ class MazeInitialStateTests(TestCase):
                 self.assertIsInstance(cell, Wall)
                 self.assertEqual(cell, ALL_WALLS)
 
-    def test_grid_rows_are_independent(self) -> None:
+    def test_grid_is_read_only(self) -> None:
         maze = Maze(width=4, height=2)
 
-        maze.grid[0][0] = Wall.NORTH
+        with self.assertRaises(TypeError):
+            maze.grid[0][0] = Wall.NORTH  # type: ignore[index]
 
-        self.assertEqual(maze.grid[0][0], Wall.NORTH)
-        self.assertEqual(maze.grid[1][0], ALL_WALLS)
+        with self.assertRaises(TypeError):
+            maze.grid[0] = (Wall.NORTH,) * 4  # type: ignore[index]
+
+    def test_dimensions_are_read_only(self) -> None:
+        maze = Maze(width=4, height=2)
+
+        with self.assertRaises(AttributeError):
+            maze.width = 5  # type: ignore[misc]
+        with self.assertRaises(AttributeError):
+            maze.height = 3  # type: ignore[misc]
 
     def test_pattern_cells_start_empty(self) -> None:
         maze = Maze(width=4, height=2)
@@ -86,8 +95,8 @@ class MazeInitialStateTests(TestCase):
 
     def test_open_pattern_cell_is_rejected_atomically(self) -> None:
         maze = Maze(width=4, height=2)
-        maze.grid[0][1] = Wall.NORTH
         maze.reserve_pattern_cells({Coordinate(0, 0)})
+        maze.open_wall(Coordinate(1, 0), Wall.SOUTH)
 
         with self.assertRaises(ValueError):
             maze.reserve_pattern_cells({Coordinate(0, 0), Coordinate(1, 0)})
@@ -110,10 +119,10 @@ class MazeInitialStateTests(TestCase):
 
     def test_get_walls_returns_walls_at_coordinate(self) -> None:
         maze = Maze(width=4, height=2)
-        position = Coordinate(3, 1)
-        maze.grid[position.y][position.x] = Wall.NORTH
+        position = Coordinate(2, 1)
+        maze.open_wall(position, Wall.EAST)
 
-        self.assertEqual(maze.get_walls(position), Wall.NORTH)
+        self.assertEqual(maze.get_walls(position), ALL_WALLS & ~Wall.EAST)
 
     def test_get_walls_rejects_coordinates_outside_maze(self) -> None:
         maze = Maze(width=4, height=2)
