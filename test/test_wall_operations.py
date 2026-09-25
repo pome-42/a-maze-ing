@@ -99,24 +99,39 @@ class WallOperationTests(TestCase):
         for position, direction in cases:
             with self.subTest(position=position, direction=direction):
                 maze = Maze(width=3, height=3)
+                maze.reserve_pattern_cells({Coordinate(0, 0)})
                 initial_grid = maze.grid
+                initial_pattern_cells = maze.pattern_cells
 
                 with self.assertRaises(ValueError):
                     maze.open_wall(position, direction)
 
                 self.assertEqual(maze.grid, initial_grid)
+                self.assertEqual(maze.pattern_cells, initial_pattern_cells)
 
     def test_out_of_bounds_position_is_rejected(self) -> None:
         maze = Maze(width=3, height=3)
+        maze.reserve_pattern_cells({Coordinate(0, 0)})
+        initial_grid = maze.grid
+        initial_pattern_cells = maze.pattern_cells
 
         with self.assertRaises(IndexError):
             maze.open_wall(Coordinate(3, 1), Wall.WEST)
 
+        self.assertEqual(maze.grid, initial_grid)
+        self.assertEqual(maze.pattern_cells, initial_pattern_cells)
+
     def test_compound_direction_is_rejected(self) -> None:
         maze = Maze(width=3, height=3)
+        maze.reserve_pattern_cells({Coordinate(0, 0)})
+        initial_grid = maze.grid
+        initial_pattern_cells = maze.pattern_cells
 
         with self.assertRaises(ValueError):
             maze.open_wall(Coordinate(1, 1), Wall.NORTH | Wall.EAST)
+
+        self.assertEqual(maze.grid, initial_grid)
+        self.assertEqual(maze.pattern_cells, initial_pattern_cells)
 
     def test_integer_direction_is_rejected(self) -> None:
         maze = Maze(width=3, height=3)

@@ -6,6 +6,37 @@ from maze import Maze
 from maze_types import ALL_WALLS, Coordinate, Wall
 
 
+class _InvalidPatternCell:
+    """Provide a hashable invalid value for atomicity tests."""
+
+    def __init__(self, hash_value: int) -> None:
+        self._hash_value = hash_value
+
+    def __hash__(self) -> int:
+        return self._hash_value
+
+    def __eq__(self, other: object) -> bool:
+        return self is other
+
+
+def _pattern_cells_in_order(valid_first: bool) -> set[object]:
+    """Build a set whose iteration order is known for this runtime."""
+    valid_cell = Coordinate(2, 0)
+
+    for hash_value in range(-10_000, 10_001):
+        invalid_cell = _InvalidPatternCell(hash_value)
+        cells = {valid_cell, invalid_cell}
+        direct_order = tuple(cells)
+        copied_order = tuple(set(cells))
+        if (
+            (direct_order[0] is valid_cell) == valid_first
+            and (copied_order[0] is valid_cell) == valid_first
+        ):
+            return cells
+
+    raise AssertionError("could not construct the requested set order")
+
+
 class MazeInitialStateTests(TestCase):
     """Test the initial state of a Maze."""
 
@@ -84,24 +115,78 @@ class MazeInitialStateTests(TestCase):
 
         self.assertNotIn(Coordinate(2, 1), maze.pattern_cells)
 
+    def test_reserving_pattern_cells_replaces_existing_reservation(
+        self,
+    ) -> None:
+        maze = Maze(width=4, height=2)
+        first_cells = {Coordinate(0, 0)}
+        second_cells = {Coordinate(1, 0), Coordinate(2, 1)}
+
+        maze.reserve_pattern_cells(first_cells)
+        maze.reserve_pattern_cells(second_cells)
+
+        self.assertEqual(maze.pattern_cells, second_cells)
+
+    def test_reregistering_same_pattern_cells_is_idempotent(self) -> None:
+        maze = Maze(width=4, height=2)
+        cells = {Coordinate(1, 0), Coordinate(2, 1)}
+
+        maze.reserve_pattern_cells(cells)
+        first_snapshot = maze.pattern_cells
+        maze.reserve_pattern_cells(cells)
+
+        self.assertEqual(maze.pattern_cells, first_snapshot)
+
+    def test_invalid_pattern_cell_type_is_rejected_atomically(self) -> None:
+        for valid_first in (True, False):
+            with self.subTest(valid_first=valid_first):
+                maze = Maze(width=4, height=2)
+                maze.reserve_pattern_cells({Coordinate(0, 0)})
+                maze.open_wall(Coordinate(1, 0), Wall.SOUTH)
+                initial_grid = maze.grid
+                initial_pattern_cells = maze.pattern_cells
+                invalid_cells = _pattern_cells_in_order(valid_first)
+
+                with self.assertRaises(TypeError):
+                    maze.reserve_pattern_cells(
+                        invalid_cells,  # type: ignore[arg-type]
+                    )
+
+                self.assertEqual(maze.grid, initial_grid)
+                self.assertEqual(maze.pattern_cells, initial_pattern_cells)
+
+    def test_reserving_empty_pattern_cells_clears_reservation(self) -> None:
+        maze = Maze(width=4, height=2)
+        maze.reserve_pattern_cells({Coordinate(1, 0)})
+
+        maze.reserve_pattern_cells(set())
+
+        self.assertEqual(maze.pattern_cells, frozenset())
+
     def test_out_of_bounds_pattern_cell_is_rejected_atomically(self) -> None:
         maze = Maze(width=4, height=2)
         maze.reserve_pattern_cells({Coordinate(0, 0)})
+        initial_grid = maze.grid
+        initial_pattern_cells = maze.pattern_cells
 
         with self.assertRaises(ValueError):
             maze.reserve_pattern_cells({Coordinate(1, 0), Coordinate(4, 0)})
 
-        self.assertEqual(maze.pattern_cells, {Coordinate(0, 0)})
+        self.assertEqual(maze.grid, initial_grid)
+        self.assertEqual(maze.pattern_cells, initial_pattern_cells)
 
     def test_open_pattern_cell_is_rejected_atomically(self) -> None:
         maze = Maze(width=4, height=2)
         maze.reserve_pattern_cells({Coordinate(0, 0)})
         maze.open_wall(Coordinate(1, 0), Wall.SOUTH)
+        initial_grid = maze.grid
+        initial_pattern_cells = maze.pattern_cells
 
         with self.assertRaises(ValueError):
             maze.reserve_pattern_cells({Coordinate(0, 0), Coordinate(1, 0)})
 
-        self.assertEqual(maze.pattern_cells, {Coordinate(0, 0)})
+        self.assertEqual(maze.grid, initial_grid)
+        self.assertEqual(maze.pattern_cells, initial_pattern_cells)
 
     def test_in_bounds_accepts_coordinates_inside_maze(self) -> None:
         maze = Maze(width=4, height=2)
