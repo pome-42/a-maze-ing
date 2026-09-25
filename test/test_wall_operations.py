@@ -128,14 +128,24 @@ class WallOperationTests(TestCase):
         maze = Maze(width=3, height=3)
         position = Coordinate(1, 1)
         maze.reserve_pattern_cells({position})
+        initial_grid = [row[:] for row in maze.grid]
+        initial_pattern_cells = maze.pattern_cells
 
         with self.assertRaises(ValueError):
             maze.open_wall(position, Wall.EAST)
+
+        self.assertEqual(maze.grid, initial_grid)
+        self.assertEqual(maze.pattern_cells, initial_pattern_cells)
 
     def test_neighbouring_pattern_cell_is_rejected(self) -> None:
         maze = Maze(width=3, height=3)
         neighbour = Coordinate(2, 1)
         maze.reserve_pattern_cells({neighbour})
+        initial_grid = [row[:] for row in maze.grid]
+        initial_pattern_cells = maze.pattern_cells
 
         with self.assertRaises(ValueError):
             maze.open_wall(Coordinate(1, 1), Wall.EAST)
+
+        self.assertEqual(maze.grid, initial_grid)
+        self.assertEqual(maze.pattern_cells, initial_pattern_cells)
