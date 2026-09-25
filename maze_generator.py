@@ -156,7 +156,7 @@ class MazeGenerator:
         self,
         maze: Maze,
         entry: Coordinate,
-        exit: Coordinate
+        exit: Coordinate,
     ) -> set[Coordinate]:
         """Reserve the selected 42 cells in the maze."""
         pattern_cells = self._select_pattern_cells(entry, exit)
@@ -166,3 +166,27 @@ class MazeGenerator:
 
         maze.reserve_pattern_cells(pattern_cells)
         return pattern_cells
+
+    def _validate_terminals(
+        self,
+        entry: Coordinate,
+        exit: Coordinate,
+    ) -> None:
+        """Validate entry and exit coordinates for generation."""
+        if not isinstance(entry, Coordinate):
+            raise TypeError("entry must be a Coordinate")
+        if not isinstance(exit, Coordinate):
+            raise TypeError("exit must be a Coordinate")
+        if not self._in_bounds(entry):
+            raise ValueError("entry must be inside the maze bounds")
+        if not self._in_bounds(exit):
+            raise ValueError("exit must be inside the maze bounds")
+        if entry == exit:
+            raise ValueError("entry and exit must be different")
+
+    def _in_bounds(self, position: Coordinate) -> bool:
+        """Return whether a coordinate is inside the maze."""
+        return (
+            0 <= position.x < self.width
+            and 0 <= position.y < self.height
+        )
