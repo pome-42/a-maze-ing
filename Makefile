@@ -3,18 +3,16 @@ install:
 	uv sync --locked
 
 run:
-
+	uv run python a_maze_ing.py config.txt
 
 debug:
-
+	uv run python -m pdb a_maze_ing.py config.txt
 
 test:
 	uv run python -m unittest discover -s test -v
 
-
 clean:
 	rm -rf __pycache__ .mypy_cache .pytest_cache
-
 
 lint:
 	uv run flake8 .
@@ -28,6 +26,5 @@ lint:
 lint-strict:
 	uv run flake8 .
 	uv run mypy --strict .
-
 
 .PHONY: install run debug test clean lint lint-strict
