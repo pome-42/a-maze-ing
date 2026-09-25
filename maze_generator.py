@@ -44,3 +44,22 @@ class MazeGenerator:
             for column, value in enumerate(mask_row)
             if value == "1"
         }
+
+    def _mask_fits(self, origin: Coordinate) -> bool:
+        """Return whether the complete mask fits inside the maze."""
+        return all(
+            0 <= cell.x < self.width and 0 <= cell.y < self.height
+            for cell in self._mask_cells(origin)
+        )
+
+    def _candidate_origins(self) -> list[Coordinate]:
+        """Return mask origins that keep every pattern cell in bounds."""
+        origins: list[Coordinate] = []
+
+        for y in range(self.height):
+            for x in range(self.width):
+                origin = Coordinate(x, y)
+                if self._mask_fits(origin):
+                    origins.append(origin)
+
+        return origins

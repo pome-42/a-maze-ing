@@ -81,3 +81,41 @@ class MazeGeneratorTests(TestCase):
         self.assertIn(Coordinate(2, 3), cells)
         self.assertIn(Coordinate(8, 7), cells)
         self.assertNotIn(Coordinate(0, 0), cells)
+
+    def test_mask_fits_inside_the_maze(self) -> None:
+        generator = MazeGenerator(10, 8)
+
+        self.assertTrue(generator._mask_fits(Coordinate(0, 0)))
+        self.assertTrue(generator._mask_fits(Coordinate(3, 3)))
+
+    def test_mask_does_not_fit_when_it_exceeds_the_maze(self) -> None:
+        generator = MazeGenerator(6, 8)
+
+        self.assertFalse(generator._mask_fits(Coordinate(0, 0)))
+        self.assertFalse(generator._mask_fits(Coordinate(4, 3)))
+
+    def test_candidate_origins_cover_all_fitting_positions_in_order(
+        self,
+    ) -> None:
+        generator = MazeGenerator(10, 8)
+
+        origins = generator._candidate_origins()
+
+        expected = [
+            Coordinate(x, y)
+            for y in range(4)
+            for x in range(4)
+        ]
+        self.assertEqual(origins, expected)
+
+    def test_candidate_origins_are_empty_when_mask_does_not_fit(self) -> None:
+        self.assertEqual(
+            MazeGenerator(6, 8)._candidate_origins(),
+            [],
+        )
+
+    def test_exact_fit_has_one_candidate_origin(self) -> None:
+        self.assertEqual(
+            MazeGenerator(7, 5)._candidate_origins(),
+            [Coordinate(0, 0)],
+        )
