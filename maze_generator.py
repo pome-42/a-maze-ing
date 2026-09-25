@@ -1,4 +1,13 @@
 """Generate perfect mazes and reserve the visible 42 pattern."""
+from maze_types import Coordinate
+
+_PATTERN_MASK = (
+    "1000111",
+    "1000001",
+    "1110111",
+    "0010100",
+    "0010111"
+)
 
 
 class MazeGenerator:
@@ -27,11 +36,11 @@ class MazeGenerator:
         self.height = height
         self.seed = seed
 
-
-_PATTERN_MASK = (
-    "1000111",
-    "1000001",
-    "1110111",
-    "0010100",
-    "0010111"
-)
+    def _mask_cells(self, origin: Coordinate) -> set[Coordinate]:
+        """Return the reserved cells for the mask at the given origin."""
+        return {
+            Coordinate(origin.x + column, origin.y + row)
+            for row, mask_row in enumerate(_PATTERN_MASK)
+            for column, value in enumerate(mask_row)
+            if value == "1"
+        }
