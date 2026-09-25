@@ -84,6 +84,36 @@ class MazeInitialStateTests(TestCase):
 
         self.assertNotIn(Coordinate(2, 1), maze.pattern_cells)
 
+    def test_reserving_pattern_cells_replaces_existing_reservation(
+        self,
+    ) -> None:
+        maze = Maze(width=4, height=2)
+        first_cells = {Coordinate(0, 0)}
+        second_cells = {Coordinate(1, 0), Coordinate(2, 1)}
+
+        maze.reserve_pattern_cells(first_cells)
+        maze.reserve_pattern_cells(second_cells)
+
+        self.assertEqual(maze.pattern_cells, second_cells)
+
+    def test_reregistering_same_pattern_cells_is_idempotent(self) -> None:
+        maze = Maze(width=4, height=2)
+        cells = {Coordinate(1, 0), Coordinate(2, 1)}
+
+        maze.reserve_pattern_cells(cells)
+        first_snapshot = maze.pattern_cells
+        maze.reserve_pattern_cells(cells)
+
+        self.assertEqual(maze.pattern_cells, first_snapshot)
+
+    def test_reserving_empty_pattern_cells_clears_reservation(self) -> None:
+        maze = Maze(width=4, height=2)
+        maze.reserve_pattern_cells({Coordinate(1, 0)})
+
+        maze.reserve_pattern_cells(set())
+
+        self.assertEqual(maze.pattern_cells, frozenset())
+
     def test_out_of_bounds_pattern_cell_is_rejected_atomically(self) -> None:
         maze = Maze(width=4, height=2)
         maze.reserve_pattern_cells({Coordinate(0, 0)})
