@@ -457,6 +457,18 @@ class MazeGeneratorTests(TestCase):
         self.assertTrue(report.is_valid, report.errors)
         self.assertEqual(report.loop_count, 0)
 
+    def test_explicit_perfect_mode_matches_default_generation(self) -> None:
+        default = MazeGenerator(10, 8, seed=42).generate()
+        explicit = MazeGenerator(10, 8, seed=42).generate(
+            perfect=True,
+        )
+
+        self.assertEqual(explicit.grid, default.grid)
+        self.assertEqual(explicit.pattern_cells, default.pattern_cells)
+        self.assertEqual(explicit.entry, default.entry)
+        self.assertEqual(explicit.exit, default.exit)
+        self.assertEqual(explicit.seed, default.seed)
+
     def test_generate_is_reproducible_with_same_seed(self) -> None:
         first = MazeGenerator(10, 8, seed=42).generate()
         second = MazeGenerator(10, 8, seed=42).generate()
