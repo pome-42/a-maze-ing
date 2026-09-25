@@ -75,6 +75,47 @@ def _fully_open_grid(
     return tuple(tuple(row) for row in grid)
 
 
+def _grid_from_edges(
+    width: int,
+    height: int,
+    edges: tuple[tuple[Coordinate, Coordinate], ...],
+) -> tuple[tuple[Wall, ...], ...]:
+    """Build a closed grid and open exactly the supplied adjacent edges."""
+    grid = [list(row) for row in _closed_grid(width, height)]
+    for first, second in edges:
+        if second.x == first.x + 1 and second.y == first.y:
+            grid[first.y][first.x] &= ~Wall.EAST
+            grid[second.y][second.x] &= ~Wall.WEST
+        elif second.x == first.x and second.y == first.y + 1:
+            grid[first.y][first.x] &= ~Wall.SOUTH
+            grid[second.y][second.x] &= ~Wall.NORTH
+        else:
+            raise ValueError("test edge endpoints must be adjacent")
+    return tuple(tuple(row) for row in grid)
+
+
+def _many_dead_ends_tree() -> tuple[tuple[Wall, ...], ...]:
+    """Return a connected 4x4 tree with more than two dead ends."""
+    edges = (
+        (Coordinate(0, 1), Coordinate(1, 1)),
+        (Coordinate(1, 1), Coordinate(2, 1)),
+        (Coordinate(2, 1), Coordinate(3, 1)),
+        (Coordinate(1, 0), Coordinate(1, 1)),
+        (Coordinate(1, 1), Coordinate(1, 2)),
+        (Coordinate(1, 2), Coordinate(1, 3)),
+        (Coordinate(0, 0), Coordinate(0, 1)),
+        (Coordinate(2, 0), Coordinate(2, 1)),
+        (Coordinate(3, 0), Coordinate(3, 1)),
+        (Coordinate(0, 1), Coordinate(0, 2)),
+        (Coordinate(2, 1), Coordinate(2, 2)),
+        (Coordinate(3, 1), Coordinate(3, 2)),
+        (Coordinate(0, 2), Coordinate(0, 3)),
+        (Coordinate(2, 2), Coordinate(2, 3)),
+        (Coordinate(3, 2), Coordinate(3, 3)),
+    )
+    return _grid_from_edges(4, 4, edges)
+
+
 class MazeValidatorTests(TestCase):
     """Test basic grid and wall invariants."""
 
@@ -144,6 +185,41 @@ class MazeValidatorTests(TestCase):
         self.assertEqual(report.loop_count, 0)
         self.assertTrue(
             any("at least 2 loops" in error for error in report.errors)
+        )
+
+    def test_non_perfect_maze_rejects_too_many_dead_ends(self) -> None:
+        data = _input(
+            _many_dead_ends_tree(),
+            width=4,
+            height=4,
+            exit=Coordinate(3, 3),
+            perfect=False,
+        )
+
+        report = validate_maze(data)
+
+        self.assertFalse(report.is_valid)
+        self.assertGreater(report.dead_end_count, 2)
+        self.assertTrue(
+            any("at most 2 dead-end" in error for error in report.errors)
+        )
+
+    def test_non_perfect_maze_reports_unreachable_corners_and_center(
+        self,
+    ) -> None:
+        data = _input(
+            _closed_grid(),
+            perfect=False,
+        )
+
+        report = validate_maze(data)
+
+        self.assertFalse(report.is_valid)
+        self.assertTrue(
+            any("corner" in error for error in report.errors)
+        )
+        self.assertTrue(
+            any("center cell" in error for error in report.errors)
         )
 
     def test_grid_shape_must_match_declared_dimensions(self) -> None:
