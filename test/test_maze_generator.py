@@ -127,6 +127,45 @@ class MazeGeneratorTests(TestCase):
         with self.assertRaises(ValueError):
             MazeGenerator(2, 2, seed=42).generate(perfect=False)
 
+    def test_non_perfect_generation_covers_multiple_sizes_and_seeds(
+        self,
+    ) -> None:
+        for width, height in ((2, 3), (3, 3), (10, 8)):
+            for seed in (0, 42):
+                with self.subTest(width=width, height=height, seed=seed):
+                    result = MazeGenerator(
+                        width,
+                        height,
+                        seed=seed,
+                    ).generate(perfect=False)
+                    report = validate_maze(
+                        MazeValidationInput(
+                            grid=result.grid,
+                            width=width,
+                            height=height,
+                            entry=result.entry,
+                            exit=result.exit,
+                            pattern_cells=result.pattern_cells,
+                            perfect=False,
+                        )
+                    )
+                    self.assertTrue(report.is_valid, report.errors)
+                    if (width, height) == (2, 3):
+                        self.assertEqual(report.loop_count, 2)
+
+    def test_non_perfect_generation_avoids_terminals_in_pattern(self) -> None:
+        entry = Coordinate(1, 1)
+        exit = Coordinate(8, 6)
+
+        result = MazeGenerator(10, 8, seed=42).generate(
+            entry,
+            exit,
+            perfect=False,
+        )
+
+        self.assertNotIn(entry, result.pattern_cells)
+        self.assertNotIn(exit, result.pattern_cells)
+
     def test_converts_mask_ones_to_coordinates(self) -> None:
         generator = MazeGenerator(10, 8)
 
