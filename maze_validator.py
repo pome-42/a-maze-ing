@@ -317,7 +317,9 @@ def _validate_mode_conditions(
     vertices, adjacency, edge_count = _build_passage_graph(data)
     loop_count = edge_count - len(vertices) + 1
     dead_end_count = sum(
-        len(neighbours) == 1 for neighbours in adjacency.values()
+        len(neighbours) == 1
+        and _has_openable_wall(position, data)
+        for position, neighbours in adjacency.items()
     )
 
     if not _valid_playable_coordinate(data.entry, data):
@@ -363,6 +365,31 @@ def _validate_mode_conditions(
             )
 
     return loop_count, dead_end_count
+
+
+def _has_openable_wall(
+    position: Coordinate,
+    data: MazeValidationInput,
+) -> bool:
+    """Return whether a closed side can open toward another passage cell."""
+    directions = (
+        (Wall.NORTH, 0, -1),
+        (Wall.EAST, 1, 0),
+        (Wall.SOUTH, 0, 1),
+        (Wall.WEST, -1, 0),
+    )
+    walls = data.grid[position.y][position.x]
+    for side, dx, dy in directions:
+        if not walls & side:
+            continue
+        neighbour = Coordinate(position.x + dx, position.y + dy)
+        if (
+            _in_bounds(neighbour, data.width, data.height)
+            and neighbour not in data.pattern_cells
+            and data.grid[neighbour.y][neighbour.x] != ALL_WALLS
+        ):
+            return True
+    return False
 
 
 def _valid_playable_coordinate(
