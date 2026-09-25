@@ -1,9 +1,10 @@
 """Tests for the maze generator entry point."""
 
+from dataclasses import FrozenInstanceError
 from unittest import TestCase
 
 from maze import Maze
-from maze_generator import MazeGenerator
+from maze_generator import GeneratedMaze, MazeGenerator
 from maze_types import ALL_WALLS, Coordinate
 
 
@@ -21,6 +22,34 @@ class MazeGeneratorTests(TestCase):
         generator = MazeGenerator(2, 2)
 
         self.assertIsNone(generator.seed)
+
+    def test_generated_maze_exposes_snapshots_and_metadata(self) -> None:
+        maze = Maze(2, 2)
+        pattern = {Coordinate(1, 1)}
+        maze.reserve_pattern_cells(pattern)
+        result = GeneratedMaze(
+            maze,
+            Coordinate(0, 0),
+            Coordinate(1, 0),
+            42,
+        )
+
+        self.assertEqual(result.grid, maze.grid)
+        self.assertEqual(result.pattern_cells, frozenset(pattern))
+        self.assertEqual(result.entry, Coordinate(0, 0))
+        self.assertEqual(result.exit, Coordinate(1, 0))
+        self.assertEqual(result.seed, 42)
+
+    def test_generated_maze_metadata_is_immutable(self) -> None:
+        result = GeneratedMaze(
+            Maze(2, 2),
+            Coordinate(0, 0),
+            Coordinate(1, 0),
+            None,
+        )
+
+        with self.assertRaises(FrozenInstanceError):
+            result.seed = 42  # type: ignore[misc]
 
     def test_rejects_non_integer_dimensions(self) -> None:
         with self.assertRaises(TypeError):

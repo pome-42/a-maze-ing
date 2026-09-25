@@ -1,6 +1,8 @@
 """Generate perfect mazes and reserve the visible 42 pattern."""
+from dataclasses import dataclass
+
 from maze import DIRECTION_STEPS, Maze
-from maze_types import Coordinate
+from maze_types import Coordinate, Wall
 
 _PATTERN_MASK = (
     "1000111",
@@ -9,6 +11,26 @@ _PATTERN_MASK = (
     "0010100",
     "0010111"
 )
+
+
+@dataclass(frozen=True)
+class GeneratedMaze:
+    """Store a generated maze and its generation metadata."""
+
+    maze: Maze
+    entry: Coordinate
+    exit: Coordinate
+    seed: int | None
+
+    @property
+    def grid(self) -> tuple[tuple[Wall, ...], ...]:
+        """Return the generated grid snapshot."""
+        return self.maze.grid
+
+    @property
+    def pattern_cells(self) -> frozenset[Coordinate]:
+        """Return the reserved 42 cells."""
+        return self.maze.pattern_cells
 
 
 class MazeGenerator:
