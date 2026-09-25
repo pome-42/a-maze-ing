@@ -457,6 +457,12 @@ class MazeGeneratorTests(TestCase):
         self.assertEqual(first.grid, replay.grid)
         self.assertEqual(first.pattern_cells, replay.pattern_cells)
 
+    def test_different_seeds_can_change_generated_grid(self) -> None:
+        first = MazeGenerator(10, 8, seed=1).generate()
+        second = MazeGenerator(10, 8, seed=2).generate()
+
+        self.assertNotEqual(first.grid, second.grid)
+
     def test_generate_uses_bottom_right_exit_by_default(self) -> None:
         result = MazeGenerator(4, 3, seed=42).generate()
 
