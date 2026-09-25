@@ -212,3 +212,15 @@ class MazeGenerator:
             0 <= position.x < self.width
             and 0 <= position.y < self.height
         )
+
+    def _playable_cells(
+        self,
+        pattern_cells: set[Coordinate],
+    ) -> set[Coordinate]:
+        """Return every cell that can be used as a passage."""
+        all_cells = {
+            Coordinate(x, y)
+            for y in range(self.height)
+            for x in range(self.width)
+        }
+        return all_cells - pattern_cells
