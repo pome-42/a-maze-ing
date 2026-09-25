@@ -1,5 +1,5 @@
 """Generate perfect mazes and reserve the visible 42 pattern."""
-from maze import DIRECTION_STEPS
+from maze import DIRECTION_STEPS, Maze
 from maze_types import Coordinate
 
 _PATTERN_MASK = (
@@ -151,3 +151,18 @@ class MazeGenerator:
         raise ValueError(
             "no pattern placement preserves playable-cell connectivity"
         )
+
+    def _reserve_pattern(
+        self,
+        maze: Maze,
+        entry: Coordinate,
+        exit: Coordinate
+    ) -> set[Coordinate]:
+        """Reserve the selected 42 cells in the maze."""
+        pattern_cells = self._select_pattern_cells(entry, exit)
+
+        if pattern_cells is None:
+            return set()
+
+        maze.reserve_pattern_cells(pattern_cells)
+        return pattern_cells
