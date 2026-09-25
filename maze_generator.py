@@ -3,9 +3,13 @@ from dataclasses import dataclass
 import random
 import secrets
 
-from maze import DIRECTION_STEPS, Maze
+from maze import DIRECTION_STEPS, OPPOSITE_WALLS, Maze
 from maze_types import Coordinate, Wall
-from maze_validator import MazeValidationInput, validate_maze
+from maze_validator import (
+    MazeValidationInput,
+    ValidationReport,
+    validate_maze,
+)
 
 _PATTERN_MASK = (
     "1000111",
@@ -306,12 +310,155 @@ class MazeGenerator:
         """Generate a maze in the requested perfectness mode."""
         if not isinstance(perfect, bool):
             raise TypeError("perfect must be a bool")
+        self._random = random.Random(self.seed)
         if not perfect:
-            raise NotImplementedError(
-                "non-perfect maze generation is not implemented yet"
-            )
+            return self._generate_non_perfect(entry, exit)
 
         return self._generate_perfect(entry, exit)
+
+    def _validation_report(
+        self,
+        result: GeneratedMaze,
+        perfect: bool,
+    ) -> ValidationReport:
+        """Return an independent validation report for a result."""
+        return validate_maze(
+            MazeValidationInput(
+                grid=result.grid,
+                width=self.width,
+                height=self.height,
+                entry=result.entry,
+                exit=result.exit,
+                pattern_cells=result.pattern_cells,
+                perfect=perfect,
+            )
+        )
+
+    def _candidate_edges(
+        self,
+        maze: Maze,
+        playable_cells: set[Coordinate],
+    ) -> list[tuple[Coordinate, Wall]]:
+        """Return closed, in-bounds edges between playable cells."""
+        candidates: list[tuple[Coordinate, Wall]] = []
+        for y in range(self.height):
+            for x in range(self.width):
+                current = Coordinate(x, y)
+                if current not in playable_cells:
+                    continue
+                for direction in (Wall.EAST, Wall.SOUTH):
+                    dx, dy = DIRECTION_STEPS[direction]
+                    neighbour = Coordinate(x + dx, y + dy)
+                    if neighbour not in playable_cells:
+                        continue
+                    if maze.get_walls(current) & direction:
+                        candidates.append((current, direction))
+        return candidates
+
+    def _preview_non_perfect_opening(
+        self,
+        maze: Maze,
+        entry: Coordinate,
+        exit: Coordinate,
+        direction: Wall,
+        position: Coordinate,
+    ) -> ValidationReport:
+        """Return the validation report for a hypothetical opening."""
+        grid = [list(row) for row in maze.grid]
+        dx, dy = DIRECTION_STEPS[direction]
+        neighbour = Coordinate(position.x + dx, position.y + dy)
+        grid[position.y][position.x] &= ~direction
+        grid[neighbour.y][neighbour.x] &= ~OPPOSITE_WALLS[direction]
+        snapshot = GeneratedMaze(
+            maze=maze,
+            entry=entry,
+            exit=exit,
+            seed=self.seed,
+            pattern_omitted=not maze.pattern_cells,
+        )
+        return validate_maze(
+            MazeValidationInput(
+                grid=tuple(tuple(row) for row in grid),
+                width=self.width,
+                height=self.height,
+                entry=snapshot.entry,
+                exit=snapshot.exit,
+                pattern_cells=snapshot.pattern_cells,
+                perfect=False,
+            )
+        )
+
+    @staticmethod
+    def _has_only_mode_errors(report: ValidationReport) -> bool:
+        """Return whether a report contains no structural errors."""
+        mode_prefixes = (
+            "corner ",
+            "no center cell",
+            "non-perfect maze must",
+        )
+        return all(
+            error.startswith(mode_prefixes)
+            for error in report.errors
+        )
+
+    def _generate_non_perfect(
+        self,
+        entry: Coordinate,
+        exit: Coordinate | None,
+    ) -> GeneratedMaze:
+        """Generate a connected maze with multiple independent routes."""
+        result = self._generate_perfect(entry, exit)
+        playable_cells = self._playable_cells(set(result.pattern_cells))
+        while True:
+            current_report = self._validation_report(
+                result,
+                perfect=False,
+            )
+            if (
+                current_report.loop_count >= 2
+                and current_report.dead_end_count <= 2
+            ):
+                break
+
+            candidates = self._candidate_edges(
+                result.maze,
+                playable_cells,
+            )
+            self._random.shuffle(candidates)
+            scored: list[tuple[int, int, int, int, Coordinate, Wall]] = []
+            for position, direction in candidates:
+                report = self._preview_non_perfect_opening(
+                    result.maze,
+                    result.entry,
+                    result.exit,
+                    direction,
+                    position,
+                )
+                if self._has_only_mode_errors(report):
+                    scored.append(
+                        (
+                            report.dead_end_count,
+                            -report.loop_count,
+                            position.y,
+                            position.x,
+                            position,
+                            direction,
+                        )
+                    )
+
+            if not scored:
+                break
+
+            _, _, _, _, position, direction = min(scored)
+            result.maze.open_wall(position, direction)
+
+        report = self._validation_report(result, perfect=False)
+        if not report.is_valid:
+            raise ValueError(
+                "cannot generate a non-perfect maze: "
+                + "; ".join(report.errors)
+            )
+        return result
 
     def _generate_perfect(
         self,
@@ -341,17 +488,7 @@ class MazeGenerator:
             pattern_omitted=not pattern_cells,
         )
 
-        report = validate_maze(
-            MazeValidationInput(
-                grid=result.grid,
-                width=self.width,
-                height=self.height,
-                entry=result.entry,
-                exit=result.exit,
-                pattern_cells=result.pattern_cells,
-                perfect=True,
-            )
-        )
+        report = self._validation_report(result, perfect=True)
 
         if not report.is_valid:
             raise RuntimeError(

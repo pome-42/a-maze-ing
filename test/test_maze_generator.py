@@ -90,9 +90,42 @@ class MazeGeneratorTests(TestCase):
                 perfect=1,  # type: ignore[arg-type]
             )
 
-    def test_non_perfect_mode_is_explicitly_pending(self) -> None:
-        with self.assertRaises(NotImplementedError):
-            MazeGenerator(10, 8).generate(perfect=False)
+    def test_generate_non_perfect_maze_meets_mode_constraints(self) -> None:
+        result = MazeGenerator(10, 8, seed=42).generate(
+            perfect=False,
+        )
+
+        report = validate_maze(
+            MazeValidationInput(
+                grid=result.grid,
+                width=10,
+                height=8,
+                entry=result.entry,
+                exit=result.exit,
+                pattern_cells=result.pattern_cells,
+                perfect=False,
+            )
+        )
+
+        self.assertTrue(report.is_valid, report.errors)
+        self.assertGreaterEqual(report.loop_count, 2)
+        self.assertLessEqual(report.dead_end_count, 2)
+
+    def test_non_perfect_generation_is_reproducible_on_same_instance(
+        self,
+    ) -> None:
+        generator = MazeGenerator(10, 8, seed=42)
+
+        first = generator.generate(perfect=False)
+        second = generator.generate(perfect=False)
+
+        self.assertEqual(first.grid, second.grid)
+        self.assertEqual(first.pattern_cells, second.pattern_cells)
+        self.assertEqual(first.seed, second.seed)
+
+    def test_non_perfect_mode_rejects_too_small_graph(self) -> None:
+        with self.assertRaises(ValueError):
+            MazeGenerator(2, 2, seed=42).generate(perfect=False)
 
     def test_converts_mask_ones_to_coordinates(self) -> None:
         generator = MazeGenerator(10, 8)
