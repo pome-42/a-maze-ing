@@ -252,3 +252,41 @@ class MazeGeneratorTests(TestCase):
                 Coordinate(0, 0),
                 Coordinate(6, 0),
             )
+
+    def test_in_bounds_checks_coordinate_edges(self) -> None:
+        generator = MazeGenerator(4, 3)
+
+        self.assertTrue(generator._in_bounds(Coordinate(0, 0)))
+        self.assertTrue(generator._in_bounds(Coordinate(3, 2)))
+        self.assertFalse(generator._in_bounds(Coordinate(-1, 0)))
+        self.assertFalse(generator._in_bounds(Coordinate(4, 2)))
+        self.assertFalse(generator._in_bounds(Coordinate(3, 3)))
+
+    def test_validate_terminals_accepts_distinct_in_bounds_coordinates(
+        self,
+    ) -> None:
+        generator = MazeGenerator(4, 3)
+
+        generator._validate_terminals(
+            Coordinate(0, 0),
+            Coordinate(3, 2),
+        )
+
+    def test_validate_terminals_rejects_invalid_coordinates(self) -> None:
+        generator = MazeGenerator(4, 3)
+
+        with self.assertRaises(TypeError):
+            generator._validate_terminals(
+                (0, 0),  # type: ignore[arg-type]
+                Coordinate(3, 2),
+            )
+        with self.assertRaises(ValueError):
+            generator._validate_terminals(
+                Coordinate(-1, 0),
+                Coordinate(3, 2),
+            )
+        with self.assertRaises(ValueError):
+            generator._validate_terminals(
+                Coordinate(1, 1),
+                Coordinate(1, 1),
+            )
