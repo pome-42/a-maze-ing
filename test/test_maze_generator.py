@@ -79,6 +79,21 @@ class MazeGeneratorTests(TestCase):
         with self.assertRaises(TypeError):
             MazeGenerator(10, 8, seed="42")  # type: ignore[arg-type]
 
+    def test_generate_accepts_perfect_mode_flag(self) -> None:
+        result = MazeGenerator(10, 8, seed=42).generate(perfect=True)
+
+        self.assertEqual(result.seed, 42)
+
+    def test_generate_rejects_invalid_perfect_mode_flag(self) -> None:
+        with self.assertRaises(TypeError):
+            MazeGenerator(10, 8).generate(
+                perfect=1,  # type: ignore[arg-type]
+            )
+
+    def test_non_perfect_mode_is_explicitly_pending(self) -> None:
+        with self.assertRaises(NotImplementedError):
+            MazeGenerator(10, 8).generate(perfect=False)
+
     def test_converts_mask_ones_to_coordinates(self) -> None:
         generator = MazeGenerator(10, 8)
 

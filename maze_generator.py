@@ -301,6 +301,22 @@ class MazeGenerator:
         self,
         entry: Coordinate = Coordinate(0, 0),
         exit: Coordinate | None = None,
+        perfect: bool = True,
+    ) -> GeneratedMaze:
+        """Generate a maze in the requested perfectness mode."""
+        if not isinstance(perfect, bool):
+            raise TypeError("perfect must be a bool")
+        if not perfect:
+            raise NotImplementedError(
+                "non-perfect maze generation is not implemented yet"
+            )
+
+        return self._generate_perfect(entry, exit)
+
+    def _generate_perfect(
+        self,
+        entry: Coordinate,
+        exit: Coordinate | None,
     ) -> GeneratedMaze:
         """Generate a perfect maze and return its result."""
         if exit is None:
