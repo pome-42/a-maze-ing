@@ -33,6 +33,7 @@ class MazeGeneratorTests(TestCase):
             Coordinate(0, 0),
             Coordinate(1, 0),
             42,
+            False,
         )
 
         self.assertEqual(result.grid, maze.grid)
@@ -40,6 +41,7 @@ class MazeGeneratorTests(TestCase):
         self.assertEqual(result.entry, Coordinate(0, 0))
         self.assertEqual(result.exit, Coordinate(1, 0))
         self.assertEqual(result.seed, 42)
+        self.assertFalse(result.pattern_omitted)
 
     def test_generated_maze_metadata_is_immutable(self) -> None:
         result = GeneratedMaze(
@@ -47,6 +49,7 @@ class MazeGeneratorTests(TestCase):
             Coordinate(0, 0),
             Coordinate(1, 0),
             42,
+            False,
         )
 
         with self.assertRaises(FrozenInstanceError):
@@ -463,6 +466,7 @@ class MazeGeneratorTests(TestCase):
         result = MazeGenerator(6, 4, seed=42).generate()
 
         self.assertEqual(result.pattern_cells, frozenset())
+        self.assertTrue(result.pattern_omitted)
 
     def test_generate_validates_multiple_sizes_and_seeds(self) -> None:
         cases = (

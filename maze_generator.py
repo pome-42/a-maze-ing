@@ -24,6 +24,7 @@ class GeneratedMaze:
     entry: Coordinate
     exit: Coordinate
     seed: int
+    pattern_omitted: bool
 
     @property
     def grid(self) -> tuple[tuple[Wall, ...], ...]:
@@ -312,6 +313,7 @@ class MazeGenerator:
             entry=entry,
             exit=exit,
             seed=self.seed,
+            pattern_omitted=not pattern_cells,
         )
 
         report = validate_maze(
