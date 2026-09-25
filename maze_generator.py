@@ -1,4 +1,5 @@
 """Generate perfect mazes and reserve the visible 42 pattern."""
+from maze import DIRECTION_STEPS
 from maze_types import Coordinate
 
 _PATTERN_MASK = (
@@ -63,3 +64,54 @@ class MazeGenerator:
                     origins.append(origin)
 
         return origins
+
+    def _candidate_origins_without_terminals(
+        self,
+        entry: Coordinate,
+        exit: Coordinate
+    ) -> list[Coordinate]:
+        """Return fitting origins that do not reserve entry or exit."""
+        origins: list[Coordinate] = []
+
+        for origin in self._candidate_origins():
+            pattern_cells = self._mask_cells(origin)
+            if entry in pattern_cells or exit in pattern_cells:
+                continue
+            origins.append(origin)
+
+        return origins
+
+    def _is_connected_without_pattern(
+        self,
+        pattern_cells: set[Coordinate],
+        start: Coordinate
+    ) -> bool:
+        """Return whether all non-pattern cells form one component."""
+        playable = {
+            Coordinate(x, y)
+            for y in range(self.height)
+            for x in range(self.width)
+        } - pattern_cells
+
+        if start not in playable:
+            return False
+
+        visited = {start}
+        pending = [start]
+
+        while pending:
+            current = pending.pop()
+
+            for directon, (dx, dy) in DIRECTION_STEPS.items():
+                neighbour = Coordinate(
+                    current.x + dx,
+                    current.y + dy
+                )
+                if (
+                    neighbour in playable
+                    and neighbour not in visited
+                ):
+                    visited.add(neighbour)
+                    pending.append(neighbour)
+
+        return visited == playable
