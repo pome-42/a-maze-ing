@@ -319,3 +319,27 @@ class MazeGeneratorTests(TestCase):
                 Coordinate(1, 1),
                 Coordinate(1, 1),
             )
+
+    def test_playable_cells_exclude_pattern_cells(self) -> None:
+        generator = MazeGenerator(3, 2)
+        pattern_cells = {Coordinate(1, 0), Coordinate(2, 1)}
+
+        playable = generator._playable_cells(pattern_cells)
+
+        self.assertEqual(
+            playable,
+            {
+                Coordinate(0, 0),
+                Coordinate(2, 0),
+                Coordinate(0, 1),
+                Coordinate(1, 1),
+            },
+        )
+
+    def test_playable_cells_do_not_mutate_pattern_input(self) -> None:
+        generator = MazeGenerator(3, 2)
+        pattern_cells = {Coordinate(1, 0)}
+
+        generator._playable_cells(pattern_cells)
+
+        self.assertEqual(pattern_cells, {Coordinate(1, 0)})
