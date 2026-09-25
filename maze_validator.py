@@ -25,6 +25,8 @@ class ValidationReport:
     errors: tuple[str, ...]
     vertex_count: int = 0
     edge_count: int = 0
+    loop_count: int = 0
+    dead_end_count: int = 0
 
     @property
     def is_valid(self) -> bool:
@@ -40,6 +42,8 @@ def validate_maze(data: MazeValidationInput) -> ValidationReport:
     errors: list[str] = []
     vertex_count = 0
     edge_count = 0
+    loop_count = 0
+    dead_end_count = 0
     dimensions_valid = _validate_dimensions(data, errors)
     shape_valid = dimensions_valid and _validate_grid_shape(data, errors)
     cells_valid = shape_valid and _validate_cell_values(data, errors)
@@ -57,8 +61,21 @@ def validate_maze(data: MazeValidationInput) -> ValidationReport:
     if pattern_shape_valid and cells_valid:
         _validate_reserved_cells(data, errors)
         vertex_count, edge_count = _validate_passage_graph(data, errors)
+        if isinstance(data.perfect, bool):
+            loop_count, dead_end_count = _validate_mode_conditions(
+                data,
+                errors,
+            )
+        else:
+            errors.append("perfect must be a bool")
 
-    return ValidationReport(tuple(errors), vertex_count, edge_count)
+    return ValidationReport(
+        tuple(errors),
+        vertex_count,
+        edge_count,
+        loop_count,
+        dead_end_count,
+    )
 
 
 def _validate_dimensions(
@@ -236,19 +253,38 @@ def _validate_passage_graph(
     ):
         return 0, 0
 
+    vertices, adjacency, edge_count = _build_passage_graph(data)
+    if data.entry not in vertices:
+        errors.append("entry must be a non-reserved passage cell")
+        return len(vertices), edge_count
+    if data.exit not in vertices:
+        errors.append("exit must be a non-reserved passage cell")
+        return len(vertices), edge_count
+
+    reachable = _reachable_from(data.entry, adjacency)
+    unreachable = sorted(vertices - reachable, key=lambda p: (p.y, p.x))
+    for position in unreachable:
+        errors.append(
+            f"passage cell ({position.x}, {position.y}) is unreachable"
+        )
+
+    if data.exit not in reachable:
+        errors.append("exit is unreachable from entry")
+
+    _validate_open_3x3_areas(data, errors)
+    return len(vertices), edge_count
+
+
+def _build_passage_graph(
+    data: MazeValidationInput,
+) -> tuple[set[Coordinate], dict[Coordinate, set[Coordinate]], int]:
+    """Build passage vertices, adjacency, and undirected edge count."""
     vertices = {
         Coordinate(x, y)
         for y in range(data.height)
         for x in range(data.width)
         if Coordinate(x, y) not in data.pattern_cells
     }
-    if data.entry not in vertices:
-        errors.append("entry must be a non-reserved passage cell")
-        return len(vertices), 0
-    if data.exit not in vertices:
-        errors.append("exit must be a non-reserved passage cell")
-        return len(vertices), 0
-
     adjacency: dict[Coordinate, set[Coordinate]] = {
         position: set() for position in vertices
     }
@@ -270,19 +306,63 @@ def _validate_passage_graph(
                     adjacency[position].add(neighbour)
                     adjacency[neighbour].add(position)
                     edge_count += 1
+    return vertices, adjacency, edge_count
 
-    reachable = _reachable_from(data.entry, adjacency)
-    unreachable = sorted(vertices - reachable, key=lambda p: (p.y, p.x))
-    for position in unreachable:
-        errors.append(
-            f"passage cell ({position.x}, {position.y}) is unreachable"
-        )
 
-    if data.exit not in reachable:
-        errors.append("exit is unreachable from entry")
+def _validate_mode_conditions(
+    data: MazeValidationInput,
+    errors: list[str],
+) -> tuple[int, int]:
+    """Validate perfect or non-perfect graph requirements."""
+    vertices, adjacency, edge_count = _build_passage_graph(data)
+    loop_count = edge_count - len(vertices) + 1
+    dead_end_count = sum(
+        len(neighbours) == 1 for neighbours in adjacency.values()
+    )
 
-    _validate_open_3x3_areas(data, errors)
-    return len(vertices), edge_count
+    if not _valid_playable_coordinate(data.entry, data):
+        return loop_count, dead_end_count
+    if data.entry not in vertices:
+        return loop_count, dead_end_count
+
+    if data.perfect:
+        if edge_count != len(vertices) - 1:
+            errors.append(
+                "perfect maze must have edge_count = vertex_count - 1"
+            )
+    else:
+        reachable = _reachable_from(data.entry, adjacency)
+        corners = {
+            Coordinate(0, 0),
+            Coordinate(data.width - 1, 0),
+            Coordinate(0, data.height - 1),
+            Coordinate(data.width - 1, data.height - 1),
+        }
+        missing_corners = sorted(corners - reachable, key=lambda p: (p.y, p.x))
+        for position in missing_corners:
+            errors.append(
+                f"corner ({position.x}, {position.y}) is unreachable"
+            )
+
+        center_x = {data.width // 2}
+        center_y = {data.height // 2}
+        if data.width % 2 == 0:
+            center_x.add(data.width // 2 - 1)
+        if data.height % 2 == 0:
+            center_y.add(data.height // 2 - 1)
+        centers = {
+            Coordinate(x, y) for x in center_x for y in center_y
+        }
+        if not centers & reachable:
+            errors.append("no center cell is reachable")
+        if loop_count < 2:
+            errors.append("non-perfect maze must have at least 2 loops")
+        if dead_end_count > 2:
+            errors.append(
+                "non-perfect maze must have at most 2 dead-end cells"
+            )
+
+    return loop_count, dead_end_count
 
 
 def _valid_playable_coordinate(

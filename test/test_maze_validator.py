@@ -25,6 +25,7 @@ def _input(
     entry: Coordinate = Coordinate(0, 0),
     exit: Coordinate = Coordinate(2, 2),
     pattern_cells: frozenset[Coordinate] = frozenset(),
+    perfect: bool = True,
 ) -> MazeValidationInput:
     """Build validator input, including intentionally invalid snapshots."""
     return MazeValidationInput(
@@ -34,7 +35,7 @@ def _input(
         entry=entry,
         exit=exit,
         pattern_cells=pattern_cells,
-        perfect=True,
+        perfect=perfect,
     )
 
 
@@ -111,11 +112,39 @@ class MazeValidatorTests(TestCase):
                     width=width,
                     height=height,
                     exit=Coordinate(width - 1, height - 1),
+                    perfect=False,
                 )
 
                 report = validate_maze(data)
 
                 self.assertTrue(report.is_valid)
+
+    def test_perfect_maze_requires_no_loops(self) -> None:
+        report = validate_maze(
+            _input(
+                _fully_open_grid(2, 3),
+                width=2,
+                height=3,
+                exit=Coordinate(1, 2),
+            )
+        )
+
+        self.assertFalse(report.is_valid)
+        self.assertEqual(report.loop_count, 2)
+        self.assertTrue(
+            any("perfect maze must have" in error for error in report.errors)
+        )
+
+    def test_non_perfect_maze_requires_two_loops(self) -> None:
+        report = validate_maze(
+            _input(_connected_tree_grid(), perfect=False)
+        )
+
+        self.assertFalse(report.is_valid)
+        self.assertEqual(report.loop_count, 0)
+        self.assertTrue(
+            any("at least 2 loops" in error for error in report.errors)
+        )
 
     def test_grid_shape_must_match_declared_dimensions(self) -> None:
         data = _input(_closed_grid(2, 3), width=3)
