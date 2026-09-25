@@ -449,6 +449,18 @@ class MazeGeneratorTests(TestCase):
         self.assertEqual(first.grid, second.grid)
         self.assertEqual(first.pattern_cells, second.pattern_cells)
 
+    def test_repeated_generation_reports_a_reproducible_seed(self) -> None:
+        generator = MazeGenerator(10, 8, seed=42)
+
+        first = generator.generate()
+        second = generator.generate()
+        replay = MazeGenerator(10, 8, seed=second.seed).generate()
+
+        self.assertEqual(first.grid, second.grid)
+        self.assertEqual(first.pattern_cells, second.pattern_cells)
+        self.assertEqual(second.grid, replay.grid)
+        self.assertEqual(second.pattern_cells, replay.pattern_cells)
+
     def test_omitted_seed_can_be_reused_for_reproduction(self) -> None:
         first = MazeGenerator(10, 8).generate()
         replay = MazeGenerator(10, 8, seed=first.seed).generate()

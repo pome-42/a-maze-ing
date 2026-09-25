@@ -307,6 +307,7 @@ class MazeGenerator:
             exit = Coordinate(self.width - 1, self.height - 1)
 
         self._validate_terminals(entry, exit)
+        self._random = random.Random(self.seed)
 
         maze = Maze(self.width, self.height)
         pattern_cells = self._reserve_pattern(
