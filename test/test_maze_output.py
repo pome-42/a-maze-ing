@@ -1,10 +1,13 @@
 """Tests for maze output serialization."""
 
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from unittest import TestCase
+from unittest.mock import patch
 
 from maze import Maze
 from maze_generator import GeneratedMaze
-from maze_output import serialize_maze
+from maze_output import save_maze, serialize_maze
 from maze_types import Coordinate, Wall
 
 
@@ -54,3 +57,36 @@ class MazeOutputTests(TestCase):
         )
         with self.assertRaises(ValueError):
             serialize_maze(result, "X")
+
+    def test_save_maze_writes_content_and_replaces_existing_file(self) -> None:
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "maze.txt"
+            path.write_text("old\n", encoding="utf-8")
+
+            save_maze(str(path), "new\n")
+
+            self.assertEqual(path.read_text(encoding="utf-8"), "new\n")
+            self.assertEqual(list(Path(directory).glob("*.tmp")), [])
+
+    def test_save_maze_cleans_temporary_file_when_replace_fails(self) -> None:
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "maze.txt"
+            path.write_text("old\n", encoding="utf-8")
+
+            with patch(
+                "maze_output.os.replace",
+                side_effect=OSError("replace failed"),
+            ):
+                with self.assertRaises(OSError):
+                    save_maze(str(path), "new\n")
+
+            self.assertEqual(path.read_text(encoding="utf-8"), "old\n")
+            self.assertEqual(list(Path(directory).glob("*.tmp")), [])
+
+    def test_save_maze_rejects_invalid_arguments(self) -> None:
+        with self.assertRaises(TypeError):
+            save_maze(123, "content")  # type: ignore[arg-type]
+        with self.assertRaises(ValueError):
+            save_maze("", "content")
+        with self.assertRaises(TypeError):
+            save_maze("maze.txt", 123)  # type: ignore[arg-type]
