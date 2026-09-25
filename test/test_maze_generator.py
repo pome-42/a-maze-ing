@@ -5,7 +5,7 @@ from unittest import TestCase
 
 from maze import Maze
 from maze_generator import GeneratedMaze, MazeGenerator
-from maze_types import ALL_WALLS, Coordinate
+from maze_types import ALL_WALLS, Coordinate, Wall
 
 
 class MazeGeneratorTests(TestCase):
@@ -343,3 +343,27 @@ class MazeGeneratorTests(TestCase):
         generator._playable_cells(pattern_cells)
 
         self.assertEqual(pattern_cells, {Coordinate(1, 0)})
+
+    def test_neighbours_at_corner_are_in_bounds_in_fixed_order(self) -> None:
+        generator = MazeGenerator(2, 2)
+
+        self.assertEqual(
+            generator._neighbours(Coordinate(0, 0)),
+            [
+                (Coordinate(1, 0), Wall.EAST),
+                (Coordinate(0, 1), Wall.SOUTH),
+            ],
+        )
+
+    def test_neighbours_at_center_include_all_four_directions(self) -> None:
+        generator = MazeGenerator(3, 3)
+
+        self.assertEqual(
+            generator._neighbours(Coordinate(1, 1)),
+            [
+                (Coordinate(1, 0), Wall.NORTH),
+                (Coordinate(2, 1), Wall.EAST),
+                (Coordinate(1, 2), Wall.SOUTH),
+                (Coordinate(0, 1), Wall.WEST),
+            ],
+        )

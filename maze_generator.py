@@ -224,3 +224,20 @@ class MazeGenerator:
             for x in range(self.width)
         }
         return all_cells - pattern_cells
+
+    def _neighbours(
+        self,
+        position: Coordinate,
+    ) -> list[tuple[Coordinate, Wall]]:
+        """Return in-bounds neighbours in fixed direction order."""
+        neighbours: list[tuple[Coordinate, Wall]] = []
+
+        for direction, (dx, dy) in DIRECTION_STEPS.items():
+            neighbour = Coordinate(
+                position.x + dx,
+                position.y + dy,
+            )
+            if self._in_bounds(neighbour):
+                neighbours.append((neighbour, direction))
+
+        return neighbours
