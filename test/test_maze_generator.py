@@ -455,3 +455,41 @@ class MazeGeneratorTests(TestCase):
         result = MazeGenerator(6, 4, seed=42).generate()
 
         self.assertEqual(result.pattern_cells, frozenset())
+
+    def test_generate_validates_multiple_sizes_and_seeds(self) -> None:
+        cases = (
+            (2, 2),
+            (6, 4),
+            (8, 7),
+            (9, 6),
+            (10, 8),
+            (11, 9),
+        )
+        seeds = (None, 0, 1, 42)
+
+        for width, height in cases:
+            for seed in seeds:
+                with self.subTest(
+                    width=width,
+                    height=height,
+                    seed=seed,
+                ):
+                    result = MazeGenerator(
+                        width,
+                        height,
+                        seed=seed,
+                    ).generate()
+                    report = validate_maze(
+                        MazeValidationInput(
+                            grid=result.grid,
+                            width=width,
+                            height=height,
+                            entry=result.entry,
+                            exit=result.exit,
+                            pattern_cells=result.pattern_cells,
+                            perfect=True,
+                        )
+                    )
+
+                    self.assertTrue(report.is_valid, report.errors)
+                    self.assertEqual(report.loop_count, 0)
