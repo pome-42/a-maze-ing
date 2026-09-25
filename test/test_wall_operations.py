@@ -65,7 +65,7 @@ class WallOperationTests(TestCase):
         position = Coordinate(1, 1)
 
         maze.open_wall(position, Wall.EAST)
-        first_grid = [row[:] for row in maze.grid]
+        first_grid = maze.grid
 
         maze.open_wall(position, Wall.EAST)
 
@@ -99,7 +99,7 @@ class WallOperationTests(TestCase):
         for position, direction in cases:
             with self.subTest(position=position, direction=direction):
                 maze = Maze(width=3, height=3)
-                initial_grid = [[ALL_WALLS] * 3 for _ in range(3)]
+                initial_grid = maze.grid
 
                 with self.assertRaises(ValueError):
                     maze.open_wall(position, direction)
@@ -128,7 +128,7 @@ class WallOperationTests(TestCase):
         maze = Maze(width=3, height=3)
         position = Coordinate(1, 1)
         maze.reserve_pattern_cells({position})
-        initial_grid = [row[:] for row in maze.grid]
+        initial_grid = maze.grid
         initial_pattern_cells = maze.pattern_cells
 
         with self.assertRaises(ValueError):
@@ -141,7 +141,7 @@ class WallOperationTests(TestCase):
         maze = Maze(width=3, height=3)
         neighbour = Coordinate(2, 1)
         maze.reserve_pattern_cells({neighbour})
-        initial_grid = [row[:] for row in maze.grid]
+        initial_grid = maze.grid
         initial_pattern_cells = maze.pattern_cells
 
         with self.assertRaises(ValueError):
