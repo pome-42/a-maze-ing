@@ -109,7 +109,7 @@ class MazeGeneratorTests(TestCase):
 
         self.assertTrue(report.is_valid, report.errors)
         self.assertGreaterEqual(report.loop_count, 2)
-        self.assertLessEqual(report.dead_end_count, 2)
+        self.assertLessEqual(report.normal_dead_end_count, 2)
 
     def test_non_perfect_generation_is_reproducible_on_same_instance(
         self,

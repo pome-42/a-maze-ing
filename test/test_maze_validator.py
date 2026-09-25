@@ -200,6 +200,11 @@ class MazeValidatorTests(TestCase):
 
         self.assertFalse(report.is_valid)
         self.assertGreater(report.dead_end_count, 2)
+        self.assertEqual(
+            report.dead_end_count,
+            report.normal_dead_end_count + report.exception_dead_end_count,
+        )
+        self.assertGreater(report.normal_dead_end_count, 2)
         self.assertTrue(
             any("at most 2 dead-end" in error for error in report.errors)
         )
