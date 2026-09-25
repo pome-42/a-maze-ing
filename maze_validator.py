@@ -23,6 +23,8 @@ class ValidationReport:
     """Collect validation errors without changing the input snapshot."""
 
     errors: tuple[str, ...]
+    vertex_count: int = 0
+    edge_count: int = 0
 
     @property
     def is_valid(self) -> bool:
@@ -36,6 +38,8 @@ def validate_maze(data: MazeValidationInput) -> ValidationReport:
         raise TypeError("data must be a MazeValidationInput")
 
     errors: list[str] = []
+    vertex_count = 0
+    edge_count = 0
     dimensions_valid = _validate_dimensions(data, errors)
     shape_valid = dimensions_valid and _validate_grid_shape(data, errors)
     cells_valid = shape_valid and _validate_cell_values(data, errors)
@@ -52,8 +56,9 @@ def validate_maze(data: MazeValidationInput) -> ValidationReport:
 
     if pattern_shape_valid and cells_valid:
         _validate_reserved_cells(data, errors)
+        vertex_count, edge_count = _validate_passage_graph(data, errors)
 
-    return ValidationReport(tuple(errors))
+    return ValidationReport(tuple(errors), vertex_count, edge_count)
 
 
 def _validate_dimensions(
@@ -219,6 +224,130 @@ def _validate_reserved_cells(
                 f"pattern cell ({position.x}, {position.y}) is not fully "
                 "closed"
             )
+
+
+def _validate_passage_graph(
+    data: MazeValidationInput,
+    errors: list[str],
+) -> tuple[int, int]:
+    """Validate passage reachability and reject fully open 3x3 areas."""
+    if not _valid_playable_coordinate(data.entry, data) or not (
+        _valid_playable_coordinate(data.exit, data)
+    ):
+        return 0, 0
+
+    vertices = {
+        Coordinate(x, y)
+        for y in range(data.height)
+        for x in range(data.width)
+        if Coordinate(x, y) not in data.pattern_cells
+    }
+    if data.entry not in vertices:
+        errors.append("entry must be a non-reserved passage cell")
+        return len(vertices), 0
+    if data.exit not in vertices:
+        errors.append("exit must be a non-reserved passage cell")
+        return len(vertices), 0
+
+    adjacency: dict[Coordinate, set[Coordinate]] = {
+        position: set() for position in vertices
+    }
+    edge_count = 0
+    for y in range(data.height):
+        for x in range(data.width):
+            position = Coordinate(x, y)
+            if position not in vertices:
+                continue
+            if x + 1 < data.width:
+                neighbour = Coordinate(x + 1, y)
+                if neighbour in vertices and _is_open_east(data, x, y):
+                    adjacency[position].add(neighbour)
+                    adjacency[neighbour].add(position)
+                    edge_count += 1
+            if y + 1 < data.height:
+                neighbour = Coordinate(x, y + 1)
+                if neighbour in vertices and _is_open_south(data, x, y):
+                    adjacency[position].add(neighbour)
+                    adjacency[neighbour].add(position)
+                    edge_count += 1
+
+    reachable = _reachable_from(data.entry, adjacency)
+    unreachable = sorted(vertices - reachable, key=lambda p: (p.y, p.x))
+    for position in unreachable:
+        errors.append(
+            f"passage cell ({position.x}, {position.y}) is unreachable"
+        )
+
+    if data.exit not in reachable:
+        errors.append("exit is unreachable from entry")
+
+    _validate_open_3x3_areas(data, errors)
+    return len(vertices), edge_count
+
+
+def _valid_playable_coordinate(
+    position: object,
+    data: MazeValidationInput,
+) -> bool:
+    """Return whether a coordinate is typed and inside the grid."""
+    return (
+        isinstance(position, Coordinate)
+        and _in_bounds(position, data.width, data.height)
+    )
+
+
+def _is_open_east(data: MazeValidationInput, x: int, y: int) -> bool:
+    """Return whether the east/west shared wall is open."""
+    return not (
+        data.grid[y][x] & Wall.EAST
+        or data.grid[y][x + 1] & Wall.WEST
+    )
+
+
+def _is_open_south(data: MazeValidationInput, x: int, y: int) -> bool:
+    """Return whether the south/north shared wall is open."""
+    return not (
+        data.grid[y][x] & Wall.SOUTH
+        or data.grid[y + 1][x] & Wall.NORTH
+    )
+
+
+def _reachable_from(
+    start: Coordinate,
+    adjacency: dict[Coordinate, set[Coordinate]],
+) -> set[Coordinate]:
+    """Return the vertices reachable from a graph start vertex."""
+    reachable = {start}
+    pending = [start]
+    while pending:
+        current = pending.pop()
+        for neighbour in adjacency[current]:
+            if neighbour not in reachable:
+                reachable.add(neighbour)
+                pending.append(neighbour)
+    return reachable
+
+
+def _validate_open_3x3_areas(
+    data: MazeValidationInput,
+    errors: list[str],
+) -> None:
+    """Reject a 3x3 area whose twelve internal edges are all open."""
+    for y in range(data.height - 2):
+        for x in range(data.width - 2):
+            all_open = all(
+                _is_open_east(data, cell_x, cell_y)
+                for cell_y in range(y, y + 3)
+                for cell_x in range(x, x + 2)
+            ) and all(
+                _is_open_south(data, cell_x, cell_y)
+                for cell_y in range(y, y + 2)
+                for cell_x in range(x, x + 3)
+            )
+            if all_open:
+                errors.append(
+                    f"3x3 fully open area starts at ({x}, {y})"
+                )
 
 
 def _in_bounds(position: Coordinate, width: int, height: int) -> bool:
