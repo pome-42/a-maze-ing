@@ -1,3 +1,5 @@
+"""Command-line entrypoint for the maze application."""
+
 import sys
 from collections.abc import Sequence
 
@@ -7,6 +9,7 @@ from maze_setup import load_maze_setup
 
 
 def a_maze_ing(argv: Sequence[str] | None = None) -> int:
+    """Load configuration and initialize the maze model from the CLI."""
     arguments = sys.argv[1:] if argv is None else list(argv)
 
     if len(arguments) != 1:
