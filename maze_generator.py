@@ -1,5 +1,6 @@
 """Generate perfect mazes and reserve the visible 42 pattern."""
 from dataclasses import dataclass
+import heapq
 import random
 import secrets
 
@@ -489,6 +490,66 @@ class MazeGenerator:
         degrees = self._passage_degrees(result.maze, playable_cells)
         dead_end_count = sum(degree == 1 for degree in degrees.values())
         loop_count = 0
+
+        # Opening an edge only removes that edge from the closed-edge set.
+        # The dead-end score changes only for edges incident to one of the
+        # two cells whose degree was changed, so keep a heap and refresh that
+        # small neighbourhood after each opening.
+        active_edges = {
+            (position, direction)
+            for position, direction in self._candidate_edges(
+                result.maze,
+                playable_cells,
+            )
+            if self._keeps_open_area_constraint(
+                result.maze,
+                position,
+                direction,
+            )
+        }
+        incident_edges: dict[
+            Coordinate,
+            set[tuple[Coordinate, Wall]],
+        ] = {cell: set() for cell in playable_cells}
+        for edge in active_edges:
+            position, direction = edge
+            dx, dy = DIRECTION_STEPS[direction]
+            neighbour = Coordinate(position.x + dx, position.y + dy)
+            incident_edges[position].add(edge)
+            incident_edges[neighbour].add(edge)
+
+        def edge_neighbour(
+            edge: tuple[Coordinate, Wall],
+        ) -> Coordinate:
+            position, direction = edge
+            dx, dy = DIRECTION_STEPS[direction]
+            return Coordinate(position.x + dx, position.y + dy)
+
+        def edge_score(
+            edge: tuple[Coordinate, Wall],
+        ) -> tuple[int, int, int, int]:
+            position, _ = edge
+            neighbour = edge_neighbour(edge)
+            next_dead_end_count = dead_end_count
+            for cell in (position, neighbour):
+                next_dead_end_count -= degrees[cell] == 1
+                next_dead_end_count += degrees[cell] + 1 == 1
+            return (
+                next_dead_end_count,
+                position.y,
+                position.x,
+                int(edge[1]),
+            )
+
+        scores = {edge: edge_score(edge) for edge in active_edges}
+        heap: list[
+            tuple[tuple[int, int, int, int], tuple[Coordinate, Wall]]
+        ] = [
+            (score, edge)
+            for edge, score in scores.items()
+        ]
+        heapq.heapify(heap)
+
         while True:
             if (
                 loop_count >= 2
@@ -496,46 +557,28 @@ class MazeGenerator:
             ):
                 break
 
-            candidates = self._candidate_edges(
-                result.maze,
-                playable_cells,
-            )
-            self._random.shuffle(candidates)
-            scored: list[tuple[int, int, int, int, Coordinate, Wall]] = []
-            for position, direction in candidates:
-                if not self._keeps_open_area_constraint(
-                    result.maze,
-                    position,
-                    direction,
+            while heap:
+                score, edge = heapq.heappop(heap)
+                if (
+                    edge in active_edges
+                    and scores.get(edge) == score
                 ):
-                    continue
-                neighbour = Coordinate(
-                    position.x + DIRECTION_STEPS[direction][0],
-                    position.y + DIRECTION_STEPS[direction][1],
-                )
-                next_dead_end_count = dead_end_count
-                for cell in (position, neighbour):
-                    next_dead_end_count -= degrees[cell] == 1
-                    next_dead_end_count += degrees[cell] + 1 == 1
-                scored.append(
-                    (
-                        next_dead_end_count,
-                        -(loop_count + 1),
-                        position.y,
-                        position.x,
-                        position,
-                        direction,
-                    )
-                )
-
-            if not scored:
+                    if self._keeps_open_area_constraint(
+                        result.maze,
+                        edge[0],
+                        edge[1],
+                    ):
+                        break
+                    # Another opening may have made this edge violate the
+                    # 3x3 constraint.  It cannot become valid again because
+                    # openings only add passages, so discard it permanently.
+                    active_edges.remove(edge)
+                    del scores[edge]
+            else:
                 break
 
-            _, _, _, _, position, direction = min(scored)
-            neighbour = Coordinate(
-                position.x + DIRECTION_STEPS[direction][0],
-                position.y + DIRECTION_STEPS[direction][1],
-            )
+            position, direction = edge
+            neighbour = edge_neighbour(edge)
             dead_end_count -= degrees[position] == 1
             dead_end_count -= degrees[neighbour] == 1
             result.maze.open_wall(position, direction)
@@ -544,6 +587,16 @@ class MazeGenerator:
             dead_end_count += degrees[position] == 1
             dead_end_count += degrees[neighbour] == 1
             loop_count += 1
+
+            active_edges.remove(edge)
+            del scores[edge]
+            for cell in (position, neighbour):
+                for affected_edge in incident_edges[cell]:
+                    if affected_edge not in active_edges:
+                        continue
+                    updated_score = edge_score(affected_edge)
+                    scores[affected_edge] = updated_score
+                    heapq.heappush(heap, (updated_score, affected_edge))
 
         report = self._validation_report(result, perfect=False)
         if not report.is_valid:
