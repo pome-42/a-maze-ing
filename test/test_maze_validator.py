@@ -200,14 +200,32 @@ class MazeValidatorTests(TestCase):
 
         self.assertFalse(report.is_valid)
         self.assertGreater(report.dead_end_count, 2)
-        self.assertEqual(
-            report.dead_end_count,
-            report.normal_dead_end_count + report.exception_dead_end_count,
-        )
+        self.assertEqual(report.dead_end_count, report.normal_dead_end_count)
         self.assertGreater(report.normal_dead_end_count, 2)
         self.assertTrue(
             any("at most 2 dead-end" in error for error in report.errors)
         )
+
+    def test_pattern_enclosed_leaves_are_not_real_dead_ends(self) -> None:
+        edges = (
+            (Coordinate(0, 0), Coordinate(0, 1)),
+            (Coordinate(0, 1), Coordinate(1, 1)),
+            (Coordinate(1, 1), Coordinate(2, 1)),
+            (Coordinate(2, 0), Coordinate(2, 1)),
+            (Coordinate(1, 1), Coordinate(1, 2)),
+            (Coordinate(1, 2), Coordinate(2, 2)),
+            (Coordinate(0, 1), Coordinate(0, 2)),
+            (Coordinate(0, 2), Coordinate(1, 2)),
+        )
+        data = _input(
+            _grid_from_edges(3, 3, edges),
+            pattern_cells=frozenset({Coordinate(1, 0)}),
+            perfect=False,
+        )
+
+        report = validate_maze(data)
+
+        self.assertEqual(report.dead_end_count, 1)
 
     def test_non_perfect_maze_reports_unreachable_corners_and_center(
         self,

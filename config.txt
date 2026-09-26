@@ -3,5 +3,6 @@ HEIGHT=20
 ENTRY=0,0
 EXIT=24,19
 OUTPUT_FILE=maze.txt
+# PERFECT=False selects a connected playable board with at least two loops.
 PERFECT=False
 SEED=42
