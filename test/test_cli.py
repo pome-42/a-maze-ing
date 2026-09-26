@@ -79,18 +79,42 @@ class CliTests(TestCase):
         self.assertIn("pattern omitted", result.stderr)
         self.assertTrue(output_exists)
 
-    def test_non_perfect_configuration_is_rejected(self) -> None:
+    def test_non_perfect_configuration_succeeds(self) -> None:
         with TemporaryDirectory() as directory:
             config_path = Path(directory) / "config.txt"
+            output_path = Path(directory) / "maze.txt"
             config_path.write_text(
-                VALID_CONFIG.replace("PERFECT=True", "PERFECT=False"),
+                VALID_CONFIG.replace("PERFECT=True", "PERFECT=False")
+                .replace("maze.txt", str(output_path)),
+                encoding="utf-8",
+            )
+
+            result = self.run_cli(str(config_path))
+            output_exists = output_path.exists()
+
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("Perfect: False", result.stdout)
+        self.assertIn("Seed: 42", result.stdout)
+        self.assertTrue(output_exists)
+        self.assertEqual(result.stderr, "")
+
+    def test_non_perfect_small_size_reports_error(self) -> None:
+        with TemporaryDirectory() as directory:
+            config_path = Path(directory) / "config.txt"
+            output_path = Path(directory) / "maze.txt"
+            config_path.write_text(
+                VALID_CONFIG.replace("WIDTH=10", "WIDTH=2")
+                .replace("HEIGHT=8", "HEIGHT=2")
+                .replace("EXIT=9,7", "EXIT=1,1")
+                .replace("PERFECT=True", "PERFECT=False")
+                .replace("maze.txt", str(output_path)),
                 encoding="utf-8",
             )
 
             result = self.run_cli(str(config_path))
 
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn("PERFECT=False is not supported", result.stderr)
+        self.assertIn("generation error:", result.stderr)
         self.assertNotIn("Traceback", result.stderr)
 
     def test_save_failure_is_reported_without_traceback(self) -> None:

@@ -79,6 +79,145 @@ class MazeGeneratorTests(TestCase):
         with self.assertRaises(TypeError):
             MazeGenerator(10, 8, seed="42")  # type: ignore[arg-type]
 
+    def test_generate_accepts_perfect_mode_flag(self) -> None:
+        result = MazeGenerator(10, 8, seed=42).generate(perfect=True)
+
+        self.assertEqual(result.seed, 42)
+
+    def test_generate_rejects_invalid_perfect_mode_flag(self) -> None:
+        with self.assertRaises(TypeError):
+            MazeGenerator(10, 8).generate(
+                perfect=1,  # type: ignore[arg-type]
+            )
+
+    def test_generate_non_perfect_maze_meets_mode_constraints(self) -> None:
+        result = MazeGenerator(10, 8, seed=42).generate(
+            perfect=False,
+        )
+
+        report = validate_maze(
+            MazeValidationInput(
+                grid=result.grid,
+                width=10,
+                height=8,
+                entry=result.entry,
+                exit=result.exit,
+                pattern_cells=result.pattern_cells,
+                perfect=False,
+            )
+        )
+
+        self.assertTrue(report.is_valid, report.errors)
+        self.assertGreaterEqual(report.loop_count, 2)
+        self.assertLessEqual(report.normal_dead_end_count, 2)
+
+    def test_non_perfect_generation_is_reproducible_on_same_instance(
+        self,
+    ) -> None:
+        generator = MazeGenerator(10, 8, seed=42)
+
+        first = generator.generate(perfect=False)
+        second = generator.generate(perfect=False)
+
+        self.assertEqual(first.grid, second.grid)
+        self.assertEqual(first.pattern_cells, second.pattern_cells)
+        self.assertEqual(first.seed, second.seed)
+
+    def test_non_perfect_generation_keeps_snapshots_stable(self) -> None:
+        generator = MazeGenerator(10, 8, seed=42)
+        first = generator.generate(perfect=False)
+        grid_snapshot = first.grid
+        pattern_snapshot = first.pattern_cells
+
+        generator.generate(perfect=False)
+
+        self.assertEqual(first.grid, grid_snapshot)
+        self.assertEqual(first.pattern_cells, pattern_snapshot)
+
+    def test_non_perfect_mode_rejects_too_small_graph(self) -> None:
+        with self.assertRaises(ValueError):
+            MazeGenerator(2, 2, seed=42).generate(perfect=False)
+
+    def test_non_perfect_generation_covers_multiple_sizes_and_seeds(
+        self,
+    ) -> None:
+        for width, height in ((2, 3), (3, 3), (10, 8)):
+            for seed in (0, 42):
+                with self.subTest(width=width, height=height, seed=seed):
+                    result = MazeGenerator(
+                        width,
+                        height,
+                        seed=seed,
+                    ).generate(perfect=False)
+                    report = validate_maze(
+                        MazeValidationInput(
+                            grid=result.grid,
+                            width=width,
+                            height=height,
+                            entry=result.entry,
+                            exit=result.exit,
+                            pattern_cells=result.pattern_cells,
+                            perfect=False,
+                        )
+                    )
+                    self.assertTrue(report.is_valid, report.errors)
+                    if (width, height) == (2, 3):
+                        self.assertEqual(report.loop_count, 2)
+
+    def test_non_perfect_generation_avoids_terminals_in_pattern(self) -> None:
+        entry = Coordinate(1, 1)
+        exit = Coordinate(8, 6)
+
+        result = MazeGenerator(10, 8, seed=42).generate(
+            entry,
+            exit,
+            perfect=False,
+        )
+
+        self.assertNotIn(entry, result.pattern_cells)
+        self.assertNotIn(exit, result.pattern_cells)
+
+    def test_non_perfect_pattern_keeps_center_playable(self) -> None:
+        entry = Coordinate(0, 0)
+        exit = Coordinate(1, 1)
+        result = MazeGenerator(9, 7, seed=42).generate(
+            entry,
+            exit,
+            perfect=False,
+        )
+
+        report = validate_maze(
+            MazeValidationInput(
+                grid=result.grid,
+                width=9,
+                height=7,
+                entry=entry,
+                exit=exit,
+                pattern_cells=result.pattern_cells,
+                perfect=False,
+            )
+        )
+        self.assertTrue(report.is_valid, report.errors)
+        self.assertNotIn(Coordinate(4, 3), result.pattern_cells)
+
+    def test_non_perfect_generation_handles_medium_grid(self) -> None:
+        result = MazeGenerator(15, 15, seed=42).generate(
+            perfect=False,
+        )
+
+        report = validate_maze(
+            MazeValidationInput(
+                grid=result.grid,
+                width=15,
+                height=15,
+                entry=result.entry,
+                exit=result.exit,
+                pattern_cells=result.pattern_cells,
+                perfect=False,
+            )
+        )
+        self.assertTrue(report.is_valid, report.errors)
+
     def test_converts_mask_ones_to_coordinates(self) -> None:
         generator = MazeGenerator(10, 8)
 
@@ -442,24 +581,24 @@ class MazeGeneratorTests(TestCase):
         self.assertTrue(report.is_valid, report.errors)
         self.assertEqual(report.loop_count, 0)
 
+    def test_explicit_perfect_mode_matches_default_generation(self) -> None:
+        default = MazeGenerator(10, 8, seed=42).generate()
+        explicit = MazeGenerator(10, 8, seed=42).generate(
+            perfect=True,
+        )
+
+        self.assertEqual(explicit.grid, default.grid)
+        self.assertEqual(explicit.pattern_cells, default.pattern_cells)
+        self.assertEqual(explicit.entry, default.entry)
+        self.assertEqual(explicit.exit, default.exit)
+        self.assertEqual(explicit.seed, default.seed)
+
     def test_generate_is_reproducible_with_same_seed(self) -> None:
         first = MazeGenerator(10, 8, seed=42).generate()
         second = MazeGenerator(10, 8, seed=42).generate()
 
         self.assertEqual(first.grid, second.grid)
         self.assertEqual(first.pattern_cells, second.pattern_cells)
-
-    def test_repeated_generation_reports_a_reproducible_seed(self) -> None:
-        generator = MazeGenerator(10, 8, seed=42)
-
-        first = generator.generate()
-        second = generator.generate()
-        replay = MazeGenerator(10, 8, seed=second.seed).generate()
-
-        self.assertEqual(first.grid, second.grid)
-        self.assertEqual(first.pattern_cells, second.pattern_cells)
-        self.assertEqual(second.grid, replay.grid)
-        self.assertEqual(second.pattern_cells, replay.pattern_cells)
 
     def test_omitted_seed_can_be_reused_for_reproduction(self) -> None:
         first = MazeGenerator(10, 8).generate()

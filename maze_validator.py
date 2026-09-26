@@ -27,6 +27,8 @@ class ValidationReport:
     edge_count: int = 0
     loop_count: int = 0
     dead_end_count: int = 0
+    normal_dead_end_count: int = 0
+    exception_dead_end_count: int = 0
 
     @property
     def is_valid(self) -> bool:
@@ -44,6 +46,8 @@ def validate_maze(data: MazeValidationInput) -> ValidationReport:
     edge_count = 0
     loop_count = 0
     dead_end_count = 0
+    normal_dead_end_count = 0
+    exception_dead_end_count = 0
     dimensions_valid = _validate_dimensions(data, errors)
     shape_valid = dimensions_valid and _validate_grid_shape(data, errors)
     cells_valid = shape_valid and _validate_cell_values(data, errors)
@@ -62,7 +66,12 @@ def validate_maze(data: MazeValidationInput) -> ValidationReport:
         _validate_reserved_cells(data, errors)
         vertex_count, edge_count = _validate_passage_graph(data, errors)
         if isinstance(data.perfect, bool):
-            loop_count, dead_end_count = _validate_mode_conditions(
+            (
+                loop_count,
+                dead_end_count,
+                normal_dead_end_count,
+                exception_dead_end_count,
+            ) = _validate_mode_conditions(
                 data,
                 errors,
             )
@@ -75,6 +84,8 @@ def validate_maze(data: MazeValidationInput) -> ValidationReport:
         edge_count,
         loop_count,
         dead_end_count,
+        normal_dead_end_count,
+        exception_dead_end_count,
     )
 
 
@@ -312,20 +323,33 @@ def _build_passage_graph(
 def _validate_mode_conditions(
     data: MazeValidationInput,
     errors: list[str],
-) -> tuple[int, int]:
+) -> tuple[int, int, int, int]:
     """Validate perfect or non-perfect graph requirements."""
     vertices, adjacency, edge_count = _build_passage_graph(data)
     loop_count = edge_count - len(vertices) + 1
-    dead_end_count = sum(
-        len(neighbours) == 1
-        and _has_openable_wall(position, data)
-        for position, neighbours in adjacency.items()
+    normal_dead_end_count, exception_dead_end_count = _count_dead_ends(
+        data,
+        adjacency,
     )
+    # Keep the public count compatible with the original validator: only
+    # ordinary dead ends count toward the dead-end limit. Cells isolated by
+    # the boundary or the 42 pattern are reported separately.
+    dead_end_count = normal_dead_end_count
 
     if not _valid_playable_coordinate(data.entry, data):
-        return loop_count, dead_end_count
+        return (
+            loop_count,
+            dead_end_count,
+            normal_dead_end_count,
+            exception_dead_end_count,
+        )
     if data.entry not in vertices:
-        return loop_count, dead_end_count
+        return (
+            loop_count,
+            dead_end_count,
+            normal_dead_end_count,
+            exception_dead_end_count,
+        )
 
     if data.perfect:
         if edge_count != len(vertices) - 1:
@@ -359,37 +383,54 @@ def _validate_mode_conditions(
             errors.append("no center cell is reachable")
         if loop_count < 2:
             errors.append("non-perfect maze must have at least 2 loops")
-        if dead_end_count > 2:
+        if normal_dead_end_count > 2:
             errors.append(
                 "non-perfect maze must have at most 2 dead-end cells"
             )
 
-    return loop_count, dead_end_count
+    return (
+        loop_count,
+        dead_end_count,
+        normal_dead_end_count,
+        exception_dead_end_count,
+    )
 
 
-def _has_openable_wall(
-    position: Coordinate,
+def _count_dead_ends(
     data: MazeValidationInput,
-) -> bool:
-    """Return whether a closed side can open toward another passage cell."""
+    adjacency: dict[Coordinate, set[Coordinate]],
+) -> tuple[int, int]:
+    """Count normal and boundary/pattern-isolated dead ends separately."""
+    normal = 0
+    exceptional = 0
     directions = (
         (Wall.NORTH, 0, -1),
         (Wall.EAST, 1, 0),
         (Wall.SOUTH, 0, 1),
         (Wall.WEST, -1, 0),
     )
-    walls = data.grid[position.y][position.x]
-    for side, dx, dy in directions:
-        if not walls & side:
+    for position, neighbours in adjacency.items():
+        if len(neighbours) != 1:
             continue
-        neighbour = Coordinate(position.x + dx, position.y + dy)
-        if (
-            _in_bounds(neighbour, data.width, data.height)
-            and neighbour not in data.pattern_cells
-            and data.grid[neighbour.y][neighbour.x] != ALL_WALLS
-        ):
-            return True
-    return False
+        has_non_exception_exit = False
+        walls = data.grid[position.y][position.x]
+        for direction, dx, dy in directions:
+            if not walls & direction:
+                continue
+            neighbour = Coordinate(position.x + dx, position.y + dy)
+            if (
+                0 <= neighbour.x < data.width
+                and 0 <= neighbour.y < data.height
+                and neighbour not in data.pattern_cells
+                and data.grid[neighbour.y][neighbour.x] != ALL_WALLS
+            ):
+                has_non_exception_exit = True
+                break
+        if has_non_exception_exit:
+            normal += 1
+        else:
+            exceptional += 1
+    return normal, exceptional
 
 
 def _valid_playable_coordinate(

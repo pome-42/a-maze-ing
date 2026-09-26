@@ -6,9 +6,10 @@ from unittest import TestCase
 from unittest.mock import patch
 
 from maze import Maze
-from maze_generator import GeneratedMaze
+from maze_generator import GeneratedMaze, MazeGenerator
 from maze_output import save_maze, serialize_maze
 from maze_types import Coordinate, Wall
+from maze_solver import shortest_path
 
 
 class MazeOutputTests(TestCase):
@@ -57,6 +58,49 @@ class MazeOutputTests(TestCase):
         )
         with self.assertRaises(ValueError):
             serialize_maze(result, "X")
+
+    def test_non_perfect_output_reproduces_shortest_path(self) -> None:
+        first = MazeGenerator(10, 8, seed=42).generate(
+            perfect=False,
+        )
+        second = MazeGenerator(10, 8, seed=42).generate(
+            perfect=False,
+        )
+        first_solution = shortest_path(
+            first.maze,
+            first.entry,
+            first.exit,
+        )
+        second_solution = shortest_path(
+            second.maze,
+            second.entry,
+            second.exit,
+        )
+        first_content = serialize_maze(first, first_solution)
+        second_content = serialize_maze(second, second_solution)
+
+        self.assertEqual(first.grid, second.grid)
+        self.assertEqual(first.pattern_cells, second.pattern_cells)
+        self.assertEqual(first_solution, second_solution)
+        self.assertEqual(first_content, second_content)
+
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "maze.txt"
+            save_maze(str(path), first_content)
+            self.assertEqual(path.read_text(encoding="utf-8"), first_content)
+
+        position = first.entry
+        directions = {
+            "N": (Wall.NORTH, 0, -1),
+            "E": (Wall.EAST, 1, 0),
+            "S": (Wall.SOUTH, 0, 1),
+            "W": (Wall.WEST, -1, 0),
+        }
+        for symbol in first_content.splitlines()[-1]:
+            wall, dx, dy = directions[symbol]
+            self.assertFalse(first.grid[position.y][position.x] & wall)
+            position = Coordinate(position.x + dx, position.y + dy)
+        self.assertEqual(position, first.exit)
 
     def test_save_maze_writes_content_and_replaces_existing_file(self) -> None:
         with TemporaryDirectory() as directory:
