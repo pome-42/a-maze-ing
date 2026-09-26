@@ -12,6 +12,9 @@ debug:
 test:
 	uv run python -m unittest discover -s test -v
 
+build:
+	uv build --out-dir .
+
 clean:
 	rm -rf __pycache__ .mypy_cache .pytest_cache
 
@@ -28,4 +31,4 @@ lint-strict:
 	uv run flake8 .
 	uv run mypy --strict .
 
-.PHONY: install run debug test clean lint lint-strict
+.PHONY: install run debug test build clean lint lint-strict
