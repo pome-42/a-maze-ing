@@ -3,7 +3,7 @@ from dataclasses import dataclass
 import random
 import secrets
 
-from maze import DIRECTION_STEPS, OPPOSITE_WALLS, Maze
+from maze import DIRECTION_STEPS, Maze
 from maze_types import Coordinate, Wall
 from maze_validator import (
     MazeValidationInput,
@@ -355,38 +355,70 @@ class MazeGenerator:
                         candidates.append((current, direction))
         return candidates
 
-    def _preview_non_perfect_opening(
+    def _passage_degrees(
         self,
         maze: Maze,
-        entry: Coordinate,
-        exit: Coordinate,
-        direction: Wall,
+        playable_cells: set[Coordinate],
+    ) -> dict[Coordinate, int]:
+        """Return current passage degrees for playable cells."""
+        degrees: dict[Coordinate, int] = {}
+        for position in playable_cells:
+            degree = 0
+            for direction, (dx, dy) in DIRECTION_STEPS.items():
+                neighbour = Coordinate(
+                    position.x + dx,
+                    position.y + dy,
+                )
+                if (
+                    neighbour in playable_cells
+                    and not maze.get_walls(position) & direction
+                ):
+                    degree += 1
+            degrees[position] = degree
+        return degrees
+
+    def _keeps_open_area_constraint(
+        self,
+        maze: Maze,
         position: Coordinate,
-    ) -> ValidationReport:
-        """Return the validation report for a hypothetical opening."""
-        grid = [list(row) for row in maze.grid]
-        dx, dy = DIRECTION_STEPS[direction]
-        neighbour = Coordinate(position.x + dx, position.y + dy)
-        grid[position.y][position.x] &= ~direction
-        grid[neighbour.y][neighbour.x] &= ~OPPOSITE_WALLS[direction]
-        snapshot = GeneratedMaze(
-            maze=maze,
-            entry=entry,
-            exit=exit,
-            seed=self.seed,
-            pattern_omitted=not maze.pattern_cells,
+        direction: Wall,
+    ) -> bool:
+        """Return whether an opening avoids a fully open 3x3 area."""
+        origins_x = range(
+            max(0, position.x - 2),
+            min(self.width - 3, position.x) + 1,
         )
-        return validate_maze(
-            MazeValidationInput(
-                grid=tuple(tuple(row) for row in grid),
-                width=self.width,
-                height=self.height,
-                entry=snapshot.entry,
-                exit=snapshot.exit,
-                pattern_cells=snapshot.pattern_cells,
-                perfect=False,
-            )
+        origins_y = range(
+            max(0, position.y - 2),
+            min(self.height - 3, position.y) + 1,
         )
+
+        def is_open(cell: Coordinate, wall: Wall) -> bool:
+            if cell == position and wall == direction:
+                return True
+            return not maze.get_walls(cell) & wall
+
+        for origin_y in origins_y:
+            for origin_x in origins_x:
+                all_east_open = all(
+                    is_open(
+                        Coordinate(cell_x, cell_y),
+                        Wall.EAST,
+                    )
+                    for cell_y in range(origin_y, origin_y + 3)
+                    for cell_x in range(origin_x, origin_x + 2)
+                )
+                all_south_open = all(
+                    is_open(
+                        Coordinate(cell_x, cell_y),
+                        Wall.SOUTH,
+                    )
+                    for cell_y in range(origin_y, origin_y + 2)
+                    for cell_x in range(origin_x, origin_x + 3)
+                )
+                if all_east_open and all_south_open:
+                    return False
+        return True
 
     @staticmethod
     def _has_only_mode_errors(report: ValidationReport) -> bool:
@@ -409,14 +441,13 @@ class MazeGenerator:
         """Generate a connected maze with multiple independent routes."""
         result = self._generate_perfect(entry, exit)
         playable_cells = self._playable_cells(set(result.pattern_cells))
+        degrees = self._passage_degrees(result.maze, playable_cells)
+        dead_end_count = sum(degree == 1 for degree in degrees.values())
+        loop_count = 0
         while True:
-            current_report = self._validation_report(
-                result,
-                perfect=False,
-            )
             if (
-                current_report.loop_count >= 2
-                and current_report.dead_end_count <= 2
+                loop_count >= 2
+                and dead_end_count <= 2
             ):
                 break
 
@@ -427,30 +458,47 @@ class MazeGenerator:
             self._random.shuffle(candidates)
             scored: list[tuple[int, int, int, int, Coordinate, Wall]] = []
             for position, direction in candidates:
-                report = self._preview_non_perfect_opening(
+                if not self._keeps_open_area_constraint(
                     result.maze,
-                    result.entry,
-                    result.exit,
-                    direction,
                     position,
+                    direction,
+                ):
+                    continue
+                neighbour = Coordinate(
+                    position.x + DIRECTION_STEPS[direction][0],
+                    position.y + DIRECTION_STEPS[direction][1],
                 )
-                if self._has_only_mode_errors(report):
-                    scored.append(
-                        (
-                            report.dead_end_count,
-                            -report.loop_count,
-                            position.y,
-                            position.x,
-                            position,
-                            direction,
-                        )
+                next_dead_end_count = dead_end_count
+                for cell in (position, neighbour):
+                    next_dead_end_count -= degrees[cell] == 1
+                    next_dead_end_count += degrees[cell] + 1 == 1
+                scored.append(
+                    (
+                        next_dead_end_count,
+                        -(loop_count + 1),
+                        position.y,
+                        position.x,
+                        position,
+                        direction,
                     )
+                )
 
             if not scored:
                 break
 
             _, _, _, _, position, direction = min(scored)
+            neighbour = Coordinate(
+                position.x + DIRECTION_STEPS[direction][0],
+                position.y + DIRECTION_STEPS[direction][1],
+            )
+            dead_end_count -= degrees[position] == 1
+            dead_end_count -= degrees[neighbour] == 1
             result.maze.open_wall(position, direction)
+            degrees[position] += 1
+            degrees[neighbour] += 1
+            dead_end_count += degrees[position] == 1
+            dead_end_count += degrees[neighbour] == 1
+            loop_count += 1
 
         report = self._validation_report(result, perfect=False)
         if not report.is_valid:

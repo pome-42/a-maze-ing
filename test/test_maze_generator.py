@@ -177,6 +177,24 @@ class MazeGeneratorTests(TestCase):
         self.assertNotIn(entry, result.pattern_cells)
         self.assertNotIn(exit, result.pattern_cells)
 
+    def test_non_perfect_generation_handles_medium_grid(self) -> None:
+        result = MazeGenerator(15, 15, seed=42).generate(
+            perfect=False,
+        )
+
+        report = validate_maze(
+            MazeValidationInput(
+                grid=result.grid,
+                width=15,
+                height=15,
+                entry=result.entry,
+                exit=result.exit,
+                pattern_cells=result.pattern_cells,
+                perfect=False,
+            )
+        )
+        self.assertTrue(report.is_valid, report.errors)
+
     def test_converts_mask_ones_to_coordinates(self) -> None:
         generator = MazeGenerator(10, 8)
 
