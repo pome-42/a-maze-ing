@@ -51,9 +51,15 @@ class MazeGenerator:
         entry: Coordinate | tuple[int, int] | None = None,
         exit: Coordinate | tuple[int, int] | None = None,
         perfect: bool = True,
+        algorithm: str = "dfs",
     ) -> None:
         self._validate_bool(perfect, "perfect")
-        self._core = _MazeGenerator(width, height, seed=seed)
+        self._core = _MazeGenerator(
+            width,
+            height,
+            seed=seed,
+            algorithm=algorithm,
+        )
         self._entry = self._coordinate_or_default(entry, Coordinate(0, 0))
         self._exit = self._coordinate_or_default(
             exit,

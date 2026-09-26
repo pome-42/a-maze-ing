@@ -50,6 +50,7 @@ class MazeGenerator:
         width: int,
         height: int,
         seed: int | None = None,
+        algorithm: str = "dfs",
     ) -> None:
         if isinstance(width, bool) or not isinstance(width, int):
             raise TypeError("width must be an integer")
@@ -63,6 +64,10 @@ class MazeGenerator:
             isinstance(seed, bool) or not isinstance(seed, int)
         ):
             raise TypeError("seed must be an integer or None")
+        if not isinstance(algorithm, str):
+            raise TypeError("algorithm must be a string")
+        if algorithm not in {"dfs", "prim"}:
+            raise ValueError("algorithm must be 'dfs' or 'prim'")
 
         self.width = width
         self.height = height
@@ -70,6 +75,7 @@ class MazeGenerator:
             seed if seed is not None else secrets.randbits(64)
         )
         self.seed = resolved_seed
+        self.algorithm = algorithm
         self._random = random.Random(resolved_seed)
 
     def _mask_cells(self, origin: Coordinate) -> set[Coordinate]:
@@ -342,6 +348,51 @@ class MazeGenerator:
             raise ValueError(
                 "playable cells cannot form one connected maze"
             )
+
+    def _carve_tree_prim(
+        self,
+        maze: Maze,
+        playable_cells: set[Coordinate],
+        start: Coordinate,
+    ) -> None:
+        """Carve a spanning tree with randomized Prim growth."""
+        if start not in playable_cells:
+            raise ValueError("start must be a playable cell")
+
+        visited = {start}
+        frontier: list[tuple[Coordinate, Coordinate, Wall]] = []
+
+        def add_frontier(position: Coordinate) -> None:
+            for neighbour, direction in self._neighbours(position):
+                if neighbour in playable_cells and neighbour not in visited:
+                    frontier.append((position, neighbour, direction))
+
+        add_frontier(start)
+        while frontier:
+            index = self._random.randrange(len(frontier))
+            position, neighbour, direction = frontier.pop(index)
+            if neighbour in visited:
+                continue
+            maze.open_wall(position, direction)
+            visited.add(neighbour)
+            add_frontier(neighbour)
+
+        if visited != playable_cells:
+            raise ValueError(
+                "playable cells cannot form one connected maze"
+            )
+
+    def _carve_spanning_tree(
+        self,
+        maze: Maze,
+        playable_cells: set[Coordinate],
+        start: Coordinate,
+    ) -> None:
+        """Carve a spanning tree with the configured algorithm."""
+        if self.algorithm == "prim":
+            self._carve_tree_prim(maze, playable_cells, start)
+            return
+        self._carve_tree(maze, playable_cells, start)
 
     def generate(
         self,
@@ -631,7 +682,7 @@ class MazeGenerator:
             perfect=validate_as_perfect,
         )
         playable_cells = self._playable_cells(pattern_cells)
-        self._carve_tree(maze, playable_cells, entry)
+        self._carve_spanning_tree(maze, playable_cells, entry)
 
         result = GeneratedMaze(
             maze=maze,
