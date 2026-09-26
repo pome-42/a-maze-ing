@@ -530,12 +530,12 @@ class MazeGenerator:
         ) -> tuple[int, int, int, int]:
             position, _ = edge
             neighbour = edge_neighbour(edge)
-            next_dead_end_count = dead_end_count
+            dead_end_delta = 0
             for cell in (position, neighbour):
-                next_dead_end_count -= degrees[cell] == 1
-                next_dead_end_count += degrees[cell] + 1 == 1
+                dead_end_delta -= degrees[cell] == 1
+                dead_end_delta += degrees[cell] + 1 == 1
             return (
-                next_dead_end_count,
+                dead_end_delta,
                 position.y,
                 position.x,
                 int(edge[1]),
