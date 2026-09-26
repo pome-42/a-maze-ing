@@ -159,12 +159,40 @@ class MazeGenerator:
 
         return visited == playable
 
+    def _pattern_preserves_non_perfect_terminals(
+        self,
+        pattern_cells: set[Coordinate],
+    ) -> bool:
+        """Return whether corners and a center candidate remain playable."""
+        corners = {
+            Coordinate(0, 0),
+            Coordinate(self.width - 1, 0),
+            Coordinate(0, self.height - 1),
+            Coordinate(self.width - 1, self.height - 1),
+        }
+        if corners & pattern_cells:
+            return False
+
+        center_x = {self.width // 2}
+        center_y = {self.height // 2}
+        if self.width % 2 == 0:
+            center_x.add(self.width // 2 - 1)
+        if self.height % 2 == 0:
+            center_y.add(self.height // 2 - 1)
+        centers = {
+            Coordinate(x, y)
+            for x in center_x
+            for y in center_y
+        }
+        return bool(centers - pattern_cells)
+
     def _select_pattern_cells(
         self,
         entry: Coordinate,
         exit: Coordinate,
+        perfect: bool = True,
     ) -> set[Coordinate] | None:
-        """Select a connected pattern placement avoiding terminals."""
+        """Select a pattern placement satisfying the generation mode."""
         fitting_origins = self._candidate_origins()
 
         if not fitting_origins:
@@ -185,6 +213,14 @@ class MazeGenerator:
         for origin in terminal_safe_origins:
             pattern_cells = self._mask_cells(origin)
 
+            if (
+                not perfect
+                and not self._pattern_preserves_non_perfect_terminals(
+                    pattern_cells
+                )
+            ):
+                continue
+
             if self._is_connected_without_pattern(
                 pattern_cells,
                 entry,
@@ -200,9 +236,14 @@ class MazeGenerator:
         maze: Maze,
         entry: Coordinate,
         exit: Coordinate,
+        perfect: bool = True,
     ) -> set[Coordinate]:
         """Reserve the selected 42 cells in the maze."""
-        pattern_cells = self._select_pattern_cells(entry, exit)
+        pattern_cells = self._select_pattern_cells(
+            entry,
+            exit,
+            perfect=perfect,
+        )
 
         if pattern_cells is None:
             return set()
@@ -439,7 +480,11 @@ class MazeGenerator:
         exit: Coordinate | None,
     ) -> GeneratedMaze:
         """Generate a connected maze with multiple independent routes."""
-        result = self._generate_perfect(entry, exit)
+        result = self._generate_perfect(
+            entry,
+            exit,
+            validate_as_perfect=False,
+        )
         playable_cells = self._playable_cells(set(result.pattern_cells))
         degrees = self._passage_degrees(result.maze, playable_cells)
         dead_end_count = sum(degree == 1 for degree in degrees.values())
@@ -517,6 +562,7 @@ class MazeGenerator:
         self,
         entry: Coordinate,
         exit: Coordinate | None,
+        validate_as_perfect: bool = True,
     ) -> GeneratedMaze:
         """Generate a perfect maze and return its result."""
         if exit is None:
@@ -529,6 +575,7 @@ class MazeGenerator:
             maze,
             entry,
             exit,
+            perfect=validate_as_perfect,
         )
         playable_cells = self._playable_cells(pattern_cells)
         self._carve_tree(maze, playable_cells, entry)
@@ -540,6 +587,9 @@ class MazeGenerator:
             seed=self.seed,
             pattern_omitted=not pattern_cells,
         )
+
+        if not validate_as_perfect:
+            return result
 
         report = self._validation_report(result, perfect=True)
 
