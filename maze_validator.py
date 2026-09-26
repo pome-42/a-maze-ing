@@ -35,6 +35,11 @@ class ValidationReport:
         """Return whether no validation errors were found."""
         return not self.errors
 
+    @property
+    def total_dead_end_count(self) -> int:
+        """Return normal and pattern/boundary dead ends together."""
+        return self.normal_dead_end_count + self.exception_dead_end_count
+
 
 def validate_maze(data: MazeValidationInput) -> ValidationReport:
     """Validate basic grid, wall, coordinate, and reservation invariants."""
