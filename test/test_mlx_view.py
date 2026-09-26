@@ -222,7 +222,9 @@ class MlxViewTests(TestCase):
         self.assertFalse(view.show_solution)
         self.assertTrue(view.handle_key("3"))
         self.assertTrue(view.handle_key("4"))
-        self.assertFalse(view.is_open)
+        # The event loop is asked to exit; ``run`` owns final cleanup.
+        self.assertTrue(view.is_open)
+        view.close()
 
     def test_regeneration_replaces_only_after_success(self) -> None:
         fake = FakeMlx()

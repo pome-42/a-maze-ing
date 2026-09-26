@@ -379,7 +379,6 @@ class MlxView:
         if key == "escape":
             if self._mlx is not None and self._mlx_ptr is not None:
                 self._mlx.mlx_loop_exit(self._mlx_ptr)
-            self.close()
             return True
         if key == "p":
             self.toggle_solution()
