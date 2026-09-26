@@ -1,8 +1,8 @@
-WIDTH=10
-HEIGHT=8
+WIDTH=25
+HEIGHT=20
 ENTRY=0,0
-EXIT=9,7
+EXIT=24,19
 OUTPUT_FILE=maze.txt
 # PERFECT=False selects a connected playable board with at least two loops.
-PERFECT=True
+PERFECT=False
 SEED=42
