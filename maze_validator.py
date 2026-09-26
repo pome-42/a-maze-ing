@@ -331,7 +331,10 @@ def _validate_mode_conditions(
         data,
         adjacency,
     )
-    dead_end_count = normal_dead_end_count + exception_dead_end_count
+    # Keep the public count compatible with the original validator: only
+    # ordinary dead ends count toward the dead-end limit. Cells isolated by
+    # the boundary or the 42 pattern are reported separately.
+    dead_end_count = normal_dead_end_count
 
     if not _valid_playable_coordinate(data.entry, data):
         return (
@@ -419,6 +422,7 @@ def _count_dead_ends(
                 0 <= neighbour.x < data.width
                 and 0 <= neighbour.y < data.height
                 and neighbour not in data.pattern_cells
+                and data.grid[neighbour.y][neighbour.x] != ALL_WALLS
             ):
                 has_non_exception_exit = True
                 break
