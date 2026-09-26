@@ -1,5 +1,6 @@
 """Generate perfect mazes and reserve the visible 42 pattern."""
 from dataclasses import dataclass
+from collections.abc import Callable
 import heapq
 import random
 import secrets
@@ -19,6 +20,8 @@ _PATTERN_MASK = (
     "0010100",
     "0010111"
 )
+
+GenerationStep = Callable[[tuple[tuple[Wall, ...], ...]], None]
 
 
 @dataclass(frozen=True)
@@ -310,6 +313,7 @@ class MazeGenerator:
         maze: Maze,
         playable_cells: set[Coordinate],
         start: Coordinate,
+        on_step: GenerationStep | None = None,
     ) -> None:
         """Carve a spanning tree through every playable cell."""
         if start not in playable_cells:
@@ -335,6 +339,8 @@ class MazeGenerator:
 
             neighbour, direction = self._random.choice(choices)
             maze.open_wall(current, direction)
+            if on_step is not None:
+                on_step(maze.grid)
             visited.add(neighbour)
             stack.append(neighbour)
 
@@ -348,15 +354,18 @@ class MazeGenerator:
         entry: Coordinate = Coordinate(0, 0),
         exit: Coordinate | None = None,
         perfect: bool = True,
+        on_step: GenerationStep | None = None,
     ) -> GeneratedMaze:
-        """Generate a maze in the requested perfectness mode."""
+        """Generate a maze and optionally report each carving step."""
         if not isinstance(perfect, bool):
             raise TypeError("perfect must be a bool")
+        if on_step is not None and not callable(on_step):
+            raise TypeError("on_step must be callable or None")
         self._random = random.Random(self.seed)
         if not perfect:
-            return self._generate_non_perfect(entry, exit)
+            return self._generate_non_perfect(entry, exit, on_step)
 
-        return self._generate_perfect(entry, exit)
+        return self._generate_perfect(entry, exit, on_step=on_step)
 
     def _validation_report(
         self,
@@ -479,12 +488,14 @@ class MazeGenerator:
         self,
         entry: Coordinate,
         exit: Coordinate | None,
+        on_step: GenerationStep | None = None,
     ) -> GeneratedMaze:
         """Generate a connected maze with multiple independent routes."""
         result = self._generate_perfect(
             entry,
             exit,
             validate_as_perfect=False,
+            on_step=on_step,
         )
         playable_cells = self._playable_cells(set(result.pattern_cells))
         degrees = self._passage_degrees(result.maze, playable_cells)
@@ -582,6 +593,8 @@ class MazeGenerator:
             dead_end_count -= degrees[position] == 1
             dead_end_count -= degrees[neighbour] == 1
             result.maze.open_wall(position, direction)
+            if on_step is not None:
+                on_step(result.maze.grid)
             degrees[position] += 1
             degrees[neighbour] += 1
             dead_end_count += degrees[position] == 1
@@ -616,6 +629,7 @@ class MazeGenerator:
         entry: Coordinate,
         exit: Coordinate | None,
         validate_as_perfect: bool = True,
+        on_step: GenerationStep | None = None,
     ) -> GeneratedMaze:
         """Generate a perfect maze and return its result."""
         if exit is None:
@@ -631,7 +645,7 @@ class MazeGenerator:
             perfect=validate_as_perfect,
         )
         playable_cells = self._playable_cells(pattern_cells)
-        self._carve_tree(maze, playable_cells, entry)
+        self._carve_tree(maze, playable_cells, entry, on_step)
 
         result = GeneratedMaze(
             maze=maze,

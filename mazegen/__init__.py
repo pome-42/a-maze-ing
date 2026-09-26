@@ -1,6 +1,7 @@
 """Public, reusable API for generating validated mazes."""
 
 from dataclasses import dataclass
+from collections.abc import Callable
 
 from maze_generator import (
     GeneratedMaze as _GeneratedMaze,
@@ -112,12 +113,18 @@ class MazeGenerator:
             pattern_omitted=generated.pattern_omitted,
         )
 
-    def generate(self) -> MazeResult:
-        """Generate, validate, and solve a maze using the configured values."""
+    def generate(
+        self,
+        on_step: Callable[[tuple[tuple[Wall, ...], ...]], None] | None = None,
+    ) -> MazeResult:
+        """Generate, solve, and optionally report immutable grid snapshots."""
+        if on_step is not None and not callable(on_step):
+            raise TypeError("on_step must be callable or None")
         generated = self._core.generate(
             self._entry,
             self._exit,
             perfect=self._perfect,
+            on_step=on_step,
         )
         solution = shortest_path(
             generated.maze,
